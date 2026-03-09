@@ -15,28 +15,17 @@ Inductive formula := var (_ : bool) (_ : atom) | bin (_ : bool) (_ _ : formula).
 Infix "⊗" := (bin true) (at level 34).
 Infix "⅋" := (bin false) (at level 35).
 
-Fixpoint formula_eqb (f g : formula) : bool :=
-  match f, g with
-  | var b1 a1, var b2 a2 => (b1 == b2) && (a1 == a2)
-  | bin b1 f1 g1, bin b2 f2 g2 => (b1 == b2) && formula_eqb f1 f2 && formula_eqb g1 g2
-  | _, _ => false
-  end.
-
-Lemma formula_eqb_refl : forall f, formula_eqb f f = true.
-Proof.
-elim=> //= b a; rewrite !eqxx => //=.
-by move => f f0 f00; rewrite f f00.
-Qed.
+Scheme Equality for formula.
+Definition formula_dec_bl := internal_formula_dec_bl.
+Definition formula_dec_lb := internal_formula_dec_lb.
+Definition formula_eqb := formula_beq.
 
 Lemma formula_eqP : Equality.axiom formula_eqb.
 Proof.
-elim=> [b1 a1|b1 f1 IHf g1 IHg] [b2 a2|b2 f2 g2] /=; try by constructor.
-  apply: (iffP andP) => [[/eqP-> /eqP->]|[<- <-]] //.
-  apply: (iffP andP).
-  move=> [/andP [/eqP-> /IHf->] /IHg->] //.
-  move=> [<- <- <-].
-  rewrite eqxx => //=.
-  split => //=; try by rewrite formula_eqb_refl.
+move=> x y.
+apply: (iffP idP).
+exact: formula_dec_bl.
+exact : formula_dec_lb.
 Qed.
 
 HB.instance Definition _ := hasDecEq.Build formula formula_eqP.
