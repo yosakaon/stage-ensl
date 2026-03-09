@@ -16,16 +16,10 @@ Infix "⊗" := (bin true) (at level 34).
 Infix "⅋" := (bin false) (at level 35).
 
 Scheme Equality for formula.
-Definition formula_dec_bl := internal_formula_dec_bl.
-Definition formula_dec_lb := internal_formula_dec_lb.
-Definition formula_eqb := formula_beq.
-
-Lemma formula_eqP : Equality.axiom formula_eqb.
+Lemma formula_eqP : Equality.axiom formula_eq_dec.
 Proof.
 move=> x y.
-apply: (iffP idP).
-exact: formula_dec_bl.
-exact : formula_dec_lb.
+case: formula_eq_dec => //= H; by constructor.
 Qed.
 
 HB.instance Definition _ := hasDecEq.Build formula formula_eqP.

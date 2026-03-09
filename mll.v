@@ -68,15 +68,11 @@ Arguments pr [_ _ _ _] _, _ [_ _ _] _, _ _ _ [_] _.
 Arguments tr [_ _ _ _ _ _ _ _ _ _] _ _, [_ _ _ _ _ _ _ _] _ _ _ _, _ _ _ _ [_ _ _ _] _ _ _ _.
 
 Scheme Equality for formula.
-Definition formula_dec_bl := internal_formula_dec_bl.
-Definition formula_dec_lb := internal_formula_dec_lb.
 
-Lemma formula_eqP : Equality.axiom formula_beq.
+Lemma formula_eqP : Equality.axiom formula_eq_dec.
 Proof.
 move=> x y.
-apply: (iffP idP).
-exact: formula_dec_bl.
-exact: formula_dec_lb.
+case: formula_eq_dec => //= H; by constructor.
 Qed.
 
 HB.instance Definition _ := hasDecEq.Build formula formula_eqP.
