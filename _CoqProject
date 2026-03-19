@@ -1,7 +1,10 @@
--R ~/math-comp mathcomp
+-R ../math-comp mathcomp
+-R ../mczify/theories mathcomp.zify
+-R . stage
 
 shuffle.v
 perm_shuffle.v
 mll_shuffle.v
 mll.v
--R . stage
+
+shuffle2.v
