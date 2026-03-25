@@ -130,6 +130,7 @@ all: rewrite count_negb in Hec; lia.
 Qed.
 End expand.
 
+(*
 Ltac merge_size :=
   repeat ( rewrite ?size_map ?size_mask ?size_tuple ?count_map ?count_negb 
             ?size_merge_seq ?size_expand ?count_expand ?count_expand_mask
@@ -141,6 +142,24 @@ Ltac merge_size :=
     end
   );
   try lia.
+*)
+Ltac merge_size :=
+  repeat ( rewrite ?size_map ?size_mask ?size_tuple ?count_map ?count_negb 
+            ?size_merge_seq
+            ?(fun s => eqP (mcode_size s)) ?(fun s => eqP (mcode_count s))
+            ?size_expand ?count_expand ?count_expand_mask
+            ?(eq_count (fun x => negbK x)) ?count_cat ?size_cat);
+  try reflexivity;
+  try lia.
+Ltac merge_size_clear :=
+  clear;
+  repeat ( rewrite ?size_map ?size_mask ?size_tuple ?count_map ?count_negb 
+            ?size_merge_seq
+            ?(fun s => eqP (mcode_size s)) ?(fun s => eqP (mcode_count s))
+            ?size_expand ?count_expand ?count_expand_mask
+            ?(eq_count (fun x => negbK x)) ?count_cat ?size_cat);
+  try reflexivity;
+  lia.
 Section seqLevel.
 
 Definition split1 {A} {n m} (s: Merge n m) (l : seq A) := (mask s l).
@@ -151,31 +170,31 @@ Definition split2 {A} {n m} (s: Merge n m) (l : seq A) :=
 Definition splits {A} {n m} (s : Merge n m) (l : seq A) := (split1 s l, split2 s l).
 
 Definition shuffling {A} n m (l1 l2 l3 : seq A) :=
-  { s : Merge n m & (l3 = merge_seq s l1 l2) * (size l1 = n) * (size l2 = m) }.
+  { s : Merge n m & l3 = merge_seq s l1 l2 & ((size l1 = n) * (size l2 = m))%type }.
 
 Lemma shuffling_splits_iff {A} {n m} (l1 l2 l3 : seq A) :
   shuffling n m l1 l2 l3 <=>
   {s : Merge n m | splits s l3 = (l1, l2) & size l3 = n + m }.
 Proof.
 split.
-  move=> [s [[hs sl1] sl2]].
+  move=> [s hs [sl1 sl2]].
   exists s.
   rewrite /splits /split1 /split2 hs.
-  rewrite mask_merge_seq_l //=. 
+  rewrite mask_merge_seq_l //=.
   rewrite mask_merge_seq_r //; merge_size.
-  all: merge_size.
+  all: try merge_size.
   by rewrite hs; merge_size.
   move=> [s [hsplit hsize]].
   exists s.
   rewrite /splits /split1 /split2 in hsplit.
-  do !split.
      rewrite -hsplit -hsize merge_seq_mask //.
-     all: merge_size.
+     all: try merge_size.
+  do !split.
      rewrite -hsplit /=. 
      rewrite size_mask => //.
-     all: merge_size.
-     rewrite -hsize.
-     merge_size.
+     all: try merge_size.
+  rewrite -hsize.
+  merge_size.
 Qed.
 
 Lemma shuffling_splits {A} {n m} (s : Merge n m) (l3 : seq A) :
@@ -188,7 +207,7 @@ by exists s.
 Qed.
 
 Lemma thm {A} {n m} (s : Merge n m) (l : seq A) : 
-  (size l) = n + m -> merge_seq s (split1 s l) (split2 s l) = l.
+  size l = n + m -> merge_seq s (split1 s l) (split2 s l) = l.
 Proof.
 move => si.
 rewrite (@merge_seq_mask _ (mcode s) ) => //=.
@@ -220,12 +239,12 @@ Lemma shuffling_comm {A} {n m : nat} (l1 l2 l3 : seq A) :
   shuffling n m l1 l2 l3 <=> shuffling m n l2 l1 l3.
 Proof.
 split. 
-move=> [s [[hs sl1] sl2]].
+move=> [s hs [sl1 sl2]].
 exists (shuffle_neg s). 
-rewrite hs merge_seq_neg; split => //.
-move=> [s [[hs sl1] sl2]].
-exists (shuffle_neg s); split => //.
-by rewrite hs merge_seq_neg.
+all: rewrite ?hs ?merge_seq_neg; try split => //.
+move=> [s hs [sl1 sl2]].
+exists (shuffle_neg s); [ | split ].
+all: by rewrite ?hs ?merge_seq_neg.
 Qed.
 
 Lemma shuffling_assoc_l {A} {n m p} (l1 l2 l3 l' l : seq A) :
@@ -233,7 +252,7 @@ Lemma shuffling_assoc_l {A} {n m p} (l1 l2 l3 l' l : seq A) :
   shuffling n (m+p) l1 l' l -> shuffling m p l2 l3 l' ->
   { l'' & shuffling n m l1 l2 l'' & shuffling (n+m) p l'' l3 l }.
 Proof.
-move=> sl1 sl2 [s1 hs1] [s2 hs2].
+move=> sl1 sl2 [s1 hm1 [hs11 hs12]] [s2 hm2 [hs21 hs22]].
 have Hec : size (mcode s2) = count negb (mcode s1).
   by merge_size.
 have Hsize12 : size (mask (expand s1 s2) (mcode s1)) == n + m.
@@ -245,10 +264,9 @@ exists (merge_seq (mask (expand s1 s2) (mcode s1)) l1 l2).
   by exists (MkMerge Hsize12 Hcount12).
 have Hsize123 : size (expand s1 s2) == n + m + p by merge_size.
 have Hcount123 : count id (expand s1 s2) == n + m by merge_size.
-exists (MkMerge Hsize123 Hcount123).
-rewrite hs2 in hs1.
-rewrite hs1 /= merge_seq_assoc //=; merge_size => //=.
-tauto.
+exists (MkMerge Hsize123 Hcount123); [ | split ].
+rewrite hm2 in hm1.
+all: rewrite ?hm1 /= ?merge_seq_assoc //=; merge_size => //=.
 Qed.
 
 Lemma shuffling_assoc_r {A} {n m p} (l1 l2 l3 l' l : seq A) :
@@ -256,7 +274,7 @@ Lemma shuffling_assoc_r {A} {n m p} (l1 l2 l3 l' l : seq A) :
   shuffling n m l1 l2 l' -> shuffling (n+m) p l' l3 l ->
   { l'' & shuffling m p l2 l3 l'' & shuffling n (m+p) l1 l'' l }.
 Proof.
-move=> sl2 sl3 [s1 hs1] [s2 hs2].
+move=> sl2 sl3 [s1 hm1 [hs11 hs12]] [s2 hm2 [hs21 hs22]].
 set nc2 := mcode (shuffle_neg s2).
 set nc1 := mcode (shuffle_neg s1).
 have Hnc2 : mcode s2 = [seq ~~ i | i <- nc2].
@@ -274,13 +292,13 @@ have Hsize1 : size [seq ~~ i | i <- expand nc2 nc1] == n + (m + p) by merge_size
 have Hcount1 : count id [seq ~~ i | i <- expand nc2 nc1] == n.
   by rewrite /nc1 /nc2; merge_size.
 exists (MkMerge Hsize1 Hcount1).
-rewrite hs2 hs1 Hnc2 Hnc1.
-rewrite merge_seq_neg (merge_seq_neg nc1).
-rewrite merge_seq_assoc //.
-do !split => //=. 
-  all: merge_size.
+  rewrite hm2 hm1 Hnc2 Hnc1.
+  rewrite merge_seq_neg (merge_seq_neg nc1).
+  rewrite merge_seq_assoc //.
+  4: split.
+  all: move => //=.
+  all: try merge_size.
   by rewrite !merge_seq_neg.
-  by rewrite hs1.
 Qed.
 
 Lemma shuffling_app_app {A} {n1 nm1 n2 nm2} 
@@ -289,11 +307,11 @@ Lemma shuffling_app_app {A} {n1 nm1 n2 nm2}
   shuffling n2 nm2 l1' l2' l3' ->
   shuffling (n1+n2) (nm1+nm2) (l1++l1') (l2++l2') (l3++l3').
 Proof.
-move=> [s [[hs sl1] sl2]] [s' [[hs' sl1'] sl2']].
+move=> [s hs [sl1 sl2]] [s' hs' [sl1' sl2']].
 have hsize : size (mcode s ++ mcode s') == (n1+n2) + (nm1+nm2) by merge_size.
 have hcount : count id (mcode s ++ mcode s') == n1+n2 by merge_size.
 exists (MkMerge hsize hcount).
-do !split => //.
+2: split => //.
 all: try merge_size => //=.
 by rewrite /= hs hs' merge_seq_cat; merge_size.
 Qed.
@@ -305,7 +323,7 @@ Lemma shuffling_app_inv {A} {n m} {l1 l2 : seq A} (p q : seq A) :
     shuffling (size l1') (size l2') l1' l2' p *
     shuffling (size l1'') (size l2'') l1'' l2'' q }}}}.
 Proof.
-move=> [s [[hs sl1] sl2]].
+move=> [s hs [sl1 sl2]].
 set c := mcode s.
 set c1 := take (size p) c.
 set c2 := drop (size p) c.
@@ -314,8 +332,8 @@ set l1'' := drop (count id c1) l1.
 set l2' := take (count negb c1) l2.
 set l2'' := drop (count negb c1) l2.
 have hc   : c = c1 ++ c2          by rewrite /c1 /c2 cat_take_drop.
-have szc  : size c = size (p ++ q); merge_size.
-  by rewrite -size_cat hs; merge_size.
+have szc  : size c = size (p ++ q).
+  by rewrite hs; merge_size.
 have szc1 : size c1 = size p by rewrite /c1 size_takel // szc size_cat leq_addr.
 have hle1 : count id c1 <= size l1.
 have h : count id c1 + count id c2 = n
@@ -340,7 +358,7 @@ have hmerge2 : merge_seq c2 l1'' l2'' = q.
   have h := congr1 (drop (size p)) hmerge.
   by rewrite drop_size_cat // drop_size_cat in h.
 have hsize1 : size c1 == size l1' + size l2'.
-  rewrite szc1 -hcnt1 -hcnt2; merge_size => //=. 
+  rewrite szc1 -hcnt1 -hcnt2; try merge_size => //=.
   rewrite szc1; merge_size; rewrite subnKC => //=.
   by rewrite -szc1; apply count_size.
 have hcount1 : count id c1 == size l1' by rewrite hcnt1.
@@ -361,7 +379,7 @@ Lemma shuffling_cat_swap {A : Type} {n m n' m'}
   shuffling n m a c s1 -> shuffling n' m' a' c' s2 ->
   shuffling (n'+n) (m'+m) (a'++a) (c'++c) (s2++s1).
 Proof.
-move=> [s [[hs sl1] sl2]] [s' [[hs' sl1'] sl2']].
+move=> [s hs [sl1 sl2]] [s' hs' [sl1' sl2']].
 have hsize : size (mcode s' ++ mcode s) == (n'+n) + (m'+m) by merge_size. 
 have hcount : count id (mcode s' ++ mcode s) == n'+n by merge_size.
 exists (MkMerge hsize hcount).
@@ -376,7 +394,7 @@ Lemma shuffling_perm_eq (A : eqType) {n m} {l1 l2 l3 : seq A} (l3' : seq A) :
     perm_eq l1 l1' * perm_eq l2 l2' *
     shuffling (size l1') (size l2') l1' l2' l3' }}.
 Proof.
-move=> [s [[hs sl1] sl2]] hperm.
+move=> [s hs [sl1 sl2]] hperm.
 apply: (catCA_perm_ind
   (P := fun t => {l1' & {l2' &
     perm_eq l1 l1' * perm_eq l2 l2' *
@@ -485,11 +503,12 @@ have Hseq1 : shuffling n (m+p) (tval l1) (tval l') (tval l).
   exists s1.
   have := congr1 val hs1 => //=. 
   rewrite val_tcast => //=.
-  move => h; do !split => //; merge_size. 
+  split; merge_size.
 have Hseq2 : shuffling m p (tval l2) (tval l3) (tval l').
   exists s2.
   rewrite -merge_tuple_tval.
-  rewrite hs2; do !split => //; merge_size.
+  by rewrite hs2.
+  by merge_size.
 have [lseq H1 H2] :=
   shuffling_assoc_l (size_tuple l1) (size_tuple l2) Hseq1 Hseq2.
 have [s' hs'] := H1.
@@ -509,14 +528,12 @@ Proof.
 move=> [s1 hs1] [s2 hs2].
 have Hseq1 : shuffling n m (tval l1) (tval l2) (tval l').
   exists s1.
-  rewrite -merge_tuple_tval.
-  do !split => //; merge_size. 
-  by rewrite hs1.
+  by rewrite -merge_tuple_tval hs1.
+  split; merge_size. 
 have Hseq2 : shuffling (n+m) p (tval l') (tval l3) (tval l).
   exists s2.
-  rewrite -merge_tuple_tval.
-  do !split => //; merge_size. 
-  by rewrite hs2.
+  by rewrite -merge_tuple_tval hs2.
+  split; merge_size.
 have [lseq H1 H2] :=
   shuffling_assoc_r (size_tuple l2) (size_tuple l3) Hseq1 Hseq2.
 have [s' hs'] := H1.
@@ -525,7 +542,7 @@ exists (merge_tuple s' l2 l3).
   by exists s'.
 exists (MkMerge e hs'').
 apply: val_inj => //=.
-by rewrite val_tcast /= -(hs').1.1 (p0).1.
+by rewrite val_tcast /= -hs' p0.
 Qed.
 
 Lemma shuffling_assoc_tuple {A} n m p (l1 : n.-tuple A) (l2 : m.-tuple A) 
@@ -563,8 +580,8 @@ Lemma shuffling_tuple_to_seq {A} {n m} (l1 : n.-tuple A) (l2 : m.-tuple A) (l3 :
 Proof.
 move=> [[s ss sc] hs].
 exists (MkMerge ss sc) => //=.
-do !split; merge_size.
-by rewrite hs /=.
+  by rewrite hs /=.
+split; merge_size.
 Qed.
 
 Lemma shuffling_to_tuple {A} {n m} (l1 l2 l3 : seq A)
@@ -574,7 +591,7 @@ Lemma shuffling_to_tuple {A} {n m} (l1 l2 l3 : seq A)
                   (Tuple (introT eqP sl2)) 
                   (Tuple (introT eqP sl3)).
 Proof.
-move=> [s [[hs _] _]].
+move=> [s hs [_ _]].
 exists s.
 by apply/val_inj => //=. 
 Qed.

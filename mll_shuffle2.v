@@ -21,6 +21,16 @@ Lemma formula_eqP : Equality.axiom formula_eq_dec.
 Proof. move=> x y. case: formula_eq_dec => //= H; by constructor. Qed.
 HB.instance Definition _ := hasDecEq.Build formula formula_eqP.
 
+Reserved Notation "A ┴".
+Fixpoint dual A :=
+match A with
+| var b X => var (negb b) X
+| bin b B C => bin (negb b) (B┴) (C┴)
+end
+where "A ┴" := (dual A) (only parsing).
+Notation "A 'ᗮ'" := (dual A) (left associativity, format "A ᗮ").
+
+
 Reserved Notation "⊢' l" (at level 65).
 Reserved Notation "⊢'' l" (at level 65).
 
@@ -70,15 +80,6 @@ match pi with
                                                                psize_shuffle_tuple pi2)
 end.
 
-Reserved Notation "A ┴".
-Fixpoint dual A :=
-match A with
-| var b X => var (negb b) X
-| bin b B C => bin (negb b) (B┴) (C┴)
-end
-where "A ┴" := (dual A) (only parsing).
-Notation "A 'ᗮ'" := (dual A) (left associativity, format "A ᗮ").
-
 Lemma ax_gen_shuffle A : ⊢' [A; A┴].
 Proof.
 induction A => //= ; last 2 first.
@@ -112,6 +113,7 @@ induction A => //= ; last 2 first.
     exists (@MkMerge 0 0 [::] erefl erefl) => //=; by apply/val_inj => //=.
 Qed.
 
+(*
 Instance ex_shuffle : Proper (perm_eq ==> iffT) mll_shuffle.
 Proof.
 move=> l1 l2 Hperm.
@@ -179,6 +181,7 @@ elim: Hd.
   subst l3; apply: pr_shuffle; apply: IH.
   by rewrite perm_sym; do 2! apply: perm_eq_app_middle; rewrite perm_sym.
 Qed.
+*)
 
 Lemma ex_size_shuffle l' l (p : perm_eq l l') (pi : ⊢' l) : { pi' : ⊢' l' | psize_shuffle pi' = psize_shuffle pi }.
 Proof.
@@ -217,6 +220,15 @@ induction pi in l', p |- *.
       f_equal => //.
 Qed.
 
+Instance ex_shuffle : Proper (perm_eq ==> iffT) mll_shuffle.
+Proof.
+move=> l l' p; split => pi.
+by destruct (ex_size_shuffle _ p pi).
+rewrite perm_sym in p.
+by destruct (ex_size_shuffle _ p pi).
+Qed.
+
+(*
 Instance ex_shuffle_tuple : Proper (perm_eq ==> iffT) mll_shuffle_tuple.
 Proof.
 move=> l1 l2 Hperm.
@@ -301,6 +313,7 @@ elim: Hd.
   subst l3; apply: pr_shuffle_tuple; apply: IH.
   by rewrite perm_sym; do 2! apply: perm_eq_app_middle; rewrite perm_sym.
 Qed.
+*)
 
 Lemma ex_size_shuffle_tuple l' l (p : perm_eq l l') (pi : ⊢'' l) : 
 { pi' : ⊢'' l' | psize_shuffle_tuple pi' = psize_shuffle_tuple pi }.
@@ -326,11 +339,11 @@ induction pi in l', p |- *.
     have [HApq HsizeA] := IHpi1 _ HpermA.
     have [HBpq HsizeB] := IHpi2 _ HpermB.
     have e : size p' = size l0' + size m1'.
-       move: sp => [bs [[hsp _] _]].
-       by rewrite hsp; merge_size.
+       move: sp => [bs hsp [_ _]].
+       by rewrite hsp; merge_size_clear.
     have e' : size q = size l3' + size m2'.
-      move: sq => [bs' [[hsq _] _]].
-      by rewrite hsq; merge_size.
+      move: sq => [bs' hsq [_ _]].
+      by rewrite hsq; merge_size_clear.
     have ssp := @shuffling_to_tuple _ _ _ l0' m1' p' erefl erefl e sp.
     have ssq := @shuffling_to_tuple _ _ _ l3' m2' q erefl erefl e' sq.
     exists (tr_shuffle_tuple _ _ ssp ssq HApq HBpq).
@@ -347,6 +360,14 @@ induction pi in l', p |- *.
       have [piAB HpiAB] := IHpi _ Hab.
       exists (pr_shuffle_tuple _ _ _ _ piAB) => /=.
       f_equal => //.
+Qed.
+
+Instance ex_shuffle_tuple : Proper (perm_eq ==> iffT) mll_shuffle_tuple.
+Proof.
+move=> l l' p; split => pi.
+by destruct (ex_size_shuffle_tuple _ p pi).
+rewrite perm_sym in p.
+by destruct (ex_size_shuffle_tuple _ p pi).
 Qed.
 
 Reserved Notation "⊢''' l" (at level 65).
@@ -382,6 +403,7 @@ induction A => //= ; last 2 first.
              [::A1; A2] [::] (dual A1) (dual A2) _ _ ) => //=.
 Qed.
 
+(*
 Instance ex_split : Proper (perm_eq ==> iffT) mll_splits.
 Proof.
 move=> l1 l2 Hperm.
@@ -485,8 +507,9 @@ elim: Hd.
   subst l3; apply: pr_splits; apply: IH.
   by rewrite perm_sym; do 2! apply: perm_eq_app_middle; rewrite perm_sym.
 Qed.
+*)
 
-Lemma ex_size_spit l' l (p : perm_eq l l') (pi : ⊢''' l) : { pi' : ⊢''' l' | psize_split pi' = psize_split pi }.
+Lemma ex_size_split l' l (p : perm_eq l l') (pi : ⊢''' l) : { pi' : ⊢''' l' | psize_split pi' = psize_split pi }.
 Proof.
 induction pi in l', p |- *.
   rewrite perm_sym in p.
@@ -499,10 +522,10 @@ induction pi in l', p |- *.
       subst l'.
       have Hsh_s : shuffling n1 m1 (split1 s1 l) (split2 s1 l) l.
         apply ((shuffling_splits_iff _ _ _ )) => //=.
-        by exists s1 => //=; merge_size.
+        by exists s1 => //=; merge_size_clear.
       have Hsh_s0 : shuffling n2 m2 (split1 s2 l'0) (split2 s2 l'0) l'0.
         apply ((shuffling_splits_iff _ _ _ )) => //=.
-        by exists s2 => //=; merge_size.
+        by exists s2 => //=; merge_size_clear.
       have Hnn := shuffling_app_app Hsh_s Hsh_s0.
       have Hpq' : perm_eq (l ++ l'0) (p' ++ q) by rewrite perm_sym.
       have [l12' [l12'' [[Hl1 Hl2] Hsh]]] := shuffling_perm_eq Hnn Hpq'.
@@ -513,10 +536,10 @@ induction pi in l', p |- *.
         by rewrite perm_eq_app_middle => //=; rewrite Hm1 in Hl2.
     have [HApq HsizeA] := IHpi1 _ HpermA.
     have [HBpq HsizeB] := IHpi2 _ HpermB.
-    move: sp => [bs [[hsp sl0'] sm1']].
-    move: sq => [bs0 [[hsq sl3'] sm2']].
-    have hT1 : size (merge_seq bs l0' m1') == size l0' + size m1' by merge_size.
-    have hT2 : size (merge_seq bs0 l3' m2') == size l3' + size m2' by merge_size.
+    move: sp => [bs hsp [sl0' sm1']].
+    move: sq => [bs0 hsq [sl3' sm2']].
+    have hT1 : size (merge_seq bs l0' m1') == size l0' + size m1' by merge_size_clear.
+    have hT2 : size (merge_seq bs0 l3' m2') == size l3' + size m2' by merge_size_clear.
     have h1 : split1 bs  (Tuple hT1) = l0' by rewrite /= thm2.
     have h2 : split1 bs0 (Tuple hT2) = l3' by rewrite thm2.
     have h3 : split2 bs  (Tuple hT1) = m1' by rewrite /= thm3.
@@ -545,4 +568,12 @@ induction pi in l', p |- *.
       subst l'.
       exists (pr_splits _ _ _ _ piAB) => /=.
       f_equal => //.
+Qed.
+
+Instance ex_split_ : Proper (perm_eq ==> iffT) mll_splits.
+Proof.
+move=> l l' p; split => pi.
+by destruct (ex_size_split _ p pi).
+rewrite perm_sym in p.
+by destruct (ex_size_split _ p pi).
 Qed.
