@@ -596,4 +596,95 @@ exists s.
 by apply/val_inj => //=. 
 Qed.
 
+Lemma shuffling_tuple_perm_eq {A : eqType} {n m}
+  (l1 : n.-tuple A) (l2 : m.-tuple A) (l3 l3' : (n+m).-tuple A) :
+  shuffling_tuple l1 l2 l3 -> perm_eq l3 l3' ->
+  { l1' : n.-tuple A & { l2' : m.-tuple A &
+    perm_eq l1 l1' * perm_eq l2 l2' *
+    shuffling_tuple l1' l2' l3' }}.
+Proof.
+move=> hsh hperm.
+have hsh_seq := shuffling_tuple_to_seq hsh.
+have [X [Y [[HpX HpY] Hsh']]] :=
+  shuffling_perm_eq hsh_seq hperm.
+have szX : size X = n by rewrite -(perm_size HpX) size_tuple.
+have szY : size Y = m by rewrite -(perm_size HpY) size_tuple.
+have szXY : size X + size Y = n + m by rewrite szX szY.
+exists (Tuple (introT eqP szX)).
+exists (Tuple (introT eqP szY)).
+split; [split|].
+- exact HpX.
+- exact HpY.
+- rewrite szX szY in Hsh'.
+  - have h := shuffling_to_tuple szX szY (size_tuple l3') Hsh'.
+    have heq : Tuple (introT eqP (size_tuple l3')) = l3'.
+    by apply/val_inj => //=.
+  by rewrite heq in h.
+Qed.
+
+Lemma shuffling_tuple_app_inv {A : eqType} {n m a b : nat}
+  (l1  : n.-tuple A) (l2  : m.-tuple A)
+  (l3  : (n + m).-tuple A)
+  (p   : a.-tuple A) (q   : b.-tuple A)
+  (Hab : a + b = n + m)
+  (Hpq : tval l3 = tval p ++ tval q) :
+  shuffling_tuple l1 l2 l3 ->
+  { n1  : nat & { n2  : nat &
+  { m1  : nat & { m2  : nat &
+  { Hn  : n1 + n2 = n  &
+  { Hm  : m1 + m2 = m  &
+  { Ha  : a = n1 + m1  &
+  { Hb  : b = n2 + m2  &
+  { l1' : n1.-tuple A & { l1'' : n2.-tuple A &
+  { l2' : m1.-tuple A & { l2'' : m2.-tuple A &
+      (tval l1 = tval l1' ++ tval l1'') *
+      (tval l2 = tval l2' ++ tval l2'') *
+      shuffling_tuple l1' l2' (tcast Ha p) *
+      shuffling_tuple l1'' l2'' (tcast Hb q)
+  }}}}}}}}}}}}.
+Proof.
+move=> hsh.
+have hsh_seq := shuffling_tuple_to_seq hsh.
+have hshpq : shuffling n m l1 l2 (p ++ q).
+  by rewrite Hpq in hsh_seq.
+have [l1' [l1'' [l2' [l2'' [Hl1 Hshsq]]]]] :=
+  shuffling_app_inv hshpq.
+have [eq1 [s s1]] := Hl1.
+have Hn : size l1' + size l1'' = n by move: eq1.1; rewrite -size_cat => <-; merge_size_clear.
+have Hm : size l2' + size l2'' = m by move : eq1.2; rewrite -size_cat => <-; merge_size_clear.
+have Ha : a = size l1' + size l2'.
+  have hc : count id (mcode s) = size l1' by merge_size_clear.
+  have hnc : count negb (mcode s) = size l2' by merge_size_clear.
+  have etc := size_merge_seq hc hnc.
+  by rewrite -[a](size_tuple p) s1 etc; merge_size_clear.
+have Hb : b = size l1'' + size l2'' by lia.
+pose L1'  : (size l1').-tuple A := Tuple (eqxx (size l1')).
+pose L1'' : (size l1'').-tuple A := Tuple (eqxx (size l1'')).
+pose L2'  : (size l2').-tuple A := Tuple (eqxx (size l2')).
+pose L2'' : (size l2'').-tuple A := Tuple (eqxx (size l2'')).
+exists (size l1') ; exists (size l1'') ; exists (size l2'); exists (size l2'').
+exists Hn; exists Hm.
+exists Ha; exists Hb.
+exists L1'; exists L1''; exists L2'; exists L2''.
+repeat split => //=.
+have sp : size (tval p) = (size l1') + (size l2') by rewrite size_tuple Ha.
+have [Hl1eq Hsl1p] := Hl1.
+have H := shuffling_to_tuple (erefl (size l1')) (erefl (size l2')) (sp) Hsl1p.
+have eq11 : (Tuple (introT eqP erefl) : (size l1').-tuple A) = L1'.
+  apply/val_inj => //=.
+have eq22 : (Tuple (introT eqP erefl) : (size l2').-tuple A) = L2' by apply/val_inj => //=.
+have eq3 : (Tuple (introT eqP sp) : (size l1' + size l2').-tuple A) = tcast Ha p. 
+  apply/val_inj=> //=; by rewrite val_tcast.
+rewrite -eq11 -eq22 -eq3.
+exact H.
+have sq : size (tval q) = (size l1'') + (size l2'') by rewrite size_tuple.
+have H := shuffling_to_tuple (erefl (size l1'')) (erefl (size l2'')) (sq) Hshsq.
+have eq11 : (Tuple (introT eqP erefl) : (size l1'').-tuple A) = L1'' by apply/val_inj => //=.
+have eq2 : (Tuple (introT eqP erefl) : (size l2'').-tuple A) = L2'' by apply/val_inj => //=.
+have eq3 : (Tuple (introT eqP sq) : (size l1'' + size l2'').-tuple A) = tcast Hb q. 
+  apply/val_inj=> //=; by rewrite val_tcast.
+rewrite -eq11 -eq2 -eq3.
+exact H.
+Qed.
+
 End tupleLevel.
