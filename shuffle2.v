@@ -475,6 +475,20 @@ Qed.
 Definition shuffling_tuple {A} {n m } (l1 : n.-tuple A) (l2 : m.-tuple A) (l3 : (n+m).-tuple A ) := 
   { s : Merge n m  | l3 = merge_tuple s l1 l2}.
 
+Lemma shuffling_tuple_splits_iff {A} {n m} 
+(l1 : n.-tuple A) (l2 : m.-tuple A) (l3 : (n+m).-tuple A ) :
+  shuffling_tuple l1 l2 l3 <=>
+  {s : Merge n m | split_tuple s l3 = (l1, l2) }.
+Proof.
+split.
+  move=> [s sl3].
+  exists s.
+  by rewrite /split_tuple sl3 thm3_tuple thm2_tuple.
+  move=> [s [hsplit1 hsplit2]].
+  exists s.
+  by rewrite -hsplit1 -hsplit2 thm_tuple.
+Qed.
+
 Lemma merge_tuple_tval {A} {n m} (s : Merge n m) (l1 : n.-tuple A) (l2 : m.-tuple A) :
   tval (merge_tuple s l1 l2) = merge_seq s (tval l1) (tval l2).
 Proof. by []. Qed.

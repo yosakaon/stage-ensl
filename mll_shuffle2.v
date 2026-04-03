@@ -577,9 +577,9 @@ by destruct (ex_size_split _ p pi).
 Qed.
 
 Reserved Notation "⊢''''' l" (at level 65).
-Inductive mll_splits : seq formula -> Type :=
-| ax_splits b X : ⊢''''' [var b X; var (negb b) X]
-| tr_splits  {n1 m1 n2 m2} (s1 : Merge n1 m1) (s2 : Merge n2 m2)
+Inductive mll_splits5 : seq formula -> Type :=
+| ax_splits5 b X : ⊢''''' [var b X; var (negb b) X]
+| tr_splits5  {n1 m1 n2 m2} (s1 : Merge n1 m1) (s2 : Merge n2 m2)
     (l : (n1+m1).-tuple formula) (l' : (n2+m2).-tuple formula)
      A B l1 l2 l1' l2' :
   @splits formula n1 m1 s1 l = (l1, l2) ->
@@ -587,27 +587,27 @@ Inductive mll_splits : seq formula -> Type :=
   ⊢''''' l1 ++ A :: l1' ->
   ⊢''''' l2 ++ B :: l2' ->
   ⊢''''' l ++ A ⊗ B :: l'
-| pr_splits l1 A B l2 :
+| pr_splits5 l1 A B l2 :
   ⊢''''' l1 ++ A :: B :: l2 ->
   ⊢''''' l1 ++ A ⅋ B :: l2
-where "⊢''''' l" := (mll_splits l).
+where "⊢''''' l" := (mll_splits5 l).
 
 Fixpoint psize_splits l (pi : ⊢''''' l) :=
 match pi with
-| ax_splits _ _  => 1
-| pr_splits _ _ _ _ pi1 => S (psize_splits pi1)
-| tr_splits _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ pi1 pi2 => S (psize_splits pi1 + psize_splits pi2)
+| ax_splits5 _ _  => 1
+| pr_splits5 _ _ _ _ pi1 => S (psize_splits pi1)
+| tr_splits5 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ pi1 pi2 => S (psize_splits pi1 + psize_splits pi2)
 end.
 
 Lemma ax_gen_splits A : ⊢''''' [A; A┴].
 Proof.
 induction A => //= ; last 2 first.
-  by apply ax_splits.
+  by apply ax_splits5.
   destruct b => //=.
-  apply: (@pr_splits [::_] _ _ _ ) => //=.
-  apply : (@tr_splits 0 0 1 1 (@MkMerge 0 0 [::] erefl erefl)  (@MkMerge 1 1 [::true; false] erefl erefl) [::] [::dual A1; dual A2 ] (A1) A2 _ _) => //=.   
-  apply: (@pr_splits [::]) => //=.  
-  apply : (@tr_splits 1 1 0 0 (@MkMerge 1 1 [::true; false] erefl erefl)
+  apply: (@pr_splits5 [::_] _ _ _ ) => //=.
+  apply : (@tr_splits5 0 0 1 1 (@MkMerge 0 0 [::] erefl erefl)  (@MkMerge 1 1 [::true; false] erefl erefl) [::] [::dual A1; dual A2 ] (A1) A2 _ _) => //=.   
+  apply: (@pr_splits5 [::]) => //=.  
+  apply : (@tr_splits5 1 1 0 0 (@MkMerge 1 1 [::true; false] erefl erefl)
               (@MkMerge 0 0 [::] erefl erefl)
              [::A1; A2] [::] (dual A1) (dual A2) _ _ ) => //=.
 Qed.
@@ -618,8 +618,8 @@ Proof.
 induction pi in l', p |- *.
  - rewrite perm_sym in p.
    destruct (perm_eq_length_2_inv _ _ _ p) as [-> | ->] => //=.
-     by exists (ax_splits b X).
-     by rewrite (negb_involutive_reverse b) negb_involutive; exists (ax_splits (~~ b) X).
+     by exists (ax_splits5 b X).
+     by rewrite (negb_involutive_reverse b) negb_involutive; exists (ax_splits5 (~~ b) X).
  - have Hpinv : perm_eq l' (A ⊗ B :: (l ++ l'0)) by rewrite perm_sym -cat1s perm_catCA //=.
    have [p' [q' [-> Hpq]]] := perm_eq_vs_cons_inv (A ⊗ B) _ _ Hpinv.
    rewrite perm_sym in Hpq.
@@ -641,7 +641,7 @@ induction pi in l', p |- *.
    move/eqP => sq ; move/eqP => sp.
    have Hbs1' : splits bs1 (Tuple (sp)) = (L11, L21) by rewrite -Hbs1 => //.
    have Hbs2' : splits bs2 (Tuple sq) = (L12, L22) by rewrite Hbs2 => //.   
-   exists (tr_splits (Tuple (sp)) (Tuple (sq)) A B Hbs1' Hbs2' pi1' pi2').
+   exists (tr_splits5 (Tuple (sp)) (Tuple (sq)) A B Hbs1' Hbs2' pi1' pi2').
      by rewrite /= Hsize1 Hsize2.
  - have Hpinv : perm_eq l' (A ⅋ B :: (l1 ++ l2)) by rewrite -cat1s perm_sym perm_catCA.
    have [p' [q [Heq Hpq]]] := perm_eq_vs_cons_inv (A ⅋ B) _ _ Hpinv.
@@ -649,11 +649,11 @@ induction pi in l', p |- *.
    have Hab : perm_eq (l1 ++ [:: A, B & l2]) (p' ++ [:: A, B & q]) by
       rewrite (perm_catCA l1 [::A;B] l2) perm_sym (perm_catCA p' [::A;B] q) !perm_cons.
    have [piAB HpiAB] := IHpi _ Hab.
-   exists (pr_splits  _ _ _ _ piAB) => /=.
+   exists (pr_splits5  _ _ _ _ piAB) => /=.
    f_equal => //.
 Qed.
 
-Instance ex_splits_ : Proper (perm_eq ==> iffT) mll_splits.
+Instance ex_splits_ : Proper (perm_eq ==> iffT) mll_splits5.
 Proof.
 move=> l l' p; split => pi.
 by destruct (ex_size_splits _ p pi).
