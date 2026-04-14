@@ -36,9 +36,9 @@ Reserved Notation "⊢'' l" (at level 65).
 
 Inductive mll_shuffle : seq formula -> Type :=
 | ax_shuffle b X : ⊢' [var b X; var (negb b) X]
-| tr_shuffle nl1 nm1 nl2 nm2 l1 m1 l2 m2 n1 n2 A B :
-  shuffling nl1 nm1 l1 m1 n1 ->
-  shuffling nl2 nm2 l2 m2 n2 ->
+| tr_shuffle l1 m1 l2 m2 n1 n2 A B :
+  shuffling (length l1) (length m1) l1 m1 n1 ->
+  shuffling (length l2) (length m2) l2 m2 n2 ->
   ⊢' l1 ++ A :: l2 ->
   ⊢' m1 ++ B :: m2 ->
   ⊢' n1 ++ A ⊗ B :: n2
@@ -69,7 +69,7 @@ Fixpoint psize_shuffle l (pi : ⊢' l) :=
 match pi with
 | ax_shuffle _ _  => 1
 | pr_shuffle _ _ _ _ pi1 => S (psize_shuffle pi1)
-| tr_shuffle _ _ _ _ _ _ _ _ _ _ _ _ _ _ pi1 pi2 => S (psize_shuffle pi1 + psize_shuffle pi2)
+| tr_shuffle _ _ _ _ _ _ _ _ _ _ pi1 pi2 => S (psize_shuffle pi1 + psize_shuffle pi2)
 end.
 
 Fixpoint psize_shuffle_tuple l (pi : ⊢'' l) :=
@@ -86,12 +86,12 @@ induction A => //= ; last 2 first.
   by apply ax_shuffle.
   destruct b => //=.
   apply: (@pr_shuffle [::_] _ _ _ ) => //=.
-  apply: (@tr_shuffle 0 0 1 1 [::] [::] [::dual A1] [::dual A2] [::] [::dual A1; dual A2] _ _).
+  apply: (@tr_shuffle [::] [::] [::dual A1] [::dual A2] [::] [::dual A1; dual A2] _ _).
       by exists (@MkMerge 0 0 [::] erefl erefl) => //=. 
       by exists (@MkMerge 1 1 [::true; false] erefl erefl).
       all: try rewrite cat0s => //.         
-  apply: (@pr_shuffle [::]) => //=.  
-  apply: (@tr_shuffle 1 1 0 0 [A1] [A2] [::] [::] [::A1 ; A2]) => //=; last 2 first.
+  apply: (@pr_shuffle [::]) => //=.
+  apply: (@tr_shuffle [A1] [A2] [::] [::] [::A1 ; A2]) => //=; last 2 first.
     by exists (@MkMerge 1 1 [::true; false] erefl erefl).
     by exists (@MkMerge 0 0 [::] erefl erefl) => //=. 
 Qed.
@@ -190,7 +190,7 @@ induction pi in l', p |- *.
   destruct (perm_eq_length_2_inv _ _ _ p) as [-> | ->] => //=.
     - by exists (ax_shuffle b X).
     - by rewrite (negb_involutive_reverse (b)) negb_involutive; exists (ax_shuffle (~~ b) X).     
-    - have tr1 := (tr_shuffle _ _ s s0 pi1 pi2).
+    - have tr1 := (tr_shuffle pi1 pi2).
       have Hpinv : perm_eq l' (A ⊗ B :: (n1 ++ n2)) by rewrite perm_sym -cat1s perm_catCA /=.
       have [p' [q [Heq Hpq]]] := perm_eq_vs_cons_inv (A ⊗ B) _ _ Hpinv.
       subst l'.
@@ -204,7 +204,7 @@ induction pi in l', p |- *.
       by rewrite perm_eq_app_middle => //=; rewrite Hm1 in Hl2.
     have [HApq HsizeA] := IHpi1 _ HpermA.
     have [HBpq HsizeB] := IHpi2 _ HpermB.
-    exists (tr_shuffle _ _ sp sq HApq HBpq).
+    exists (tr_shuffle sp sq HApq HBpq).
     f_equal.
     by rewrite /= HsizeA HsizeB.
   - have Hpinv : perm_eq l' (A ⅋ B :: (l1 ++ l2)).
