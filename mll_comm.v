@@ -45,6 +45,10 @@ Inductive mll_shuffle : seq formula -> Type :=
 | pr_shuffle l1 A B l2 : ⊢' l1 ++ A :: B :: l2 -> ⊢' l1 ++ A ⅋ B :: l2
 where "⊢' l" := (mll_shuffle l).
 
+Arguments ax_shuffle {_ _}, [_] _, _ _.
+Arguments pr_shuffle [_ _ _ _] _, _ [_ _ _] _, _ _ _ [_] _.
+Arguments tr_shuffle [_ _ _ _ _ _ _ _ _ _] _ _, [_ _ _ _ _ _ _ _] _ _ _ _, _ _ _ _ [_ _ _ _] _ _ _ _.
+
 Inductive mll_shuffle_nondep : seq formula -> Type :=
 | ax_shuffle_nondep b X : ⊢'' [var b X; var (negb b) X]
 | tr_shuffle_nondep nl1 nm1 nl2 nm2 l1 m1 l2 m2 n1 n2 A B :
@@ -60,12 +64,16 @@ Inductive mll_shuffle_nondep : seq formula -> Type :=
 
 where "⊢'' l" := (mll_shuffle_nondep l).
 
+Arguments ax_shuffle_nondep {_ _}, [_] _, _ _.
+Arguments pr_shuffle_nondep [_ _ _ _] _, _ [_ _ _] _, _ _ _ [_] _.
+Arguments tr_shuffle_nondep [_ _ _ _ _ _ _ _ _ _] _ _, [_ _ _ _ _ _ _ _] _ _ _ _, _ _ _ _ [_ _ _ _] _ _ _ _.
+
 Lemma mll_shuffle_to_nondep l : mll_shuffle l -> mll_shuffle_nondep l.
 Proof.
   intro π. induction π.
   - exact (ax_shuffle_nondep b X).
   - exact (tr_shuffle_nondep A B s s0 IHπ1 IHπ2).
-    exact (pr_shuffle_nondep A B _ _ erefl erefl IHπ).
+    exact (pr_shuffle_nondep _ _ erefl erefl IHπ).
 Qed.
 
 Lemma mll_shuffle_nondep_to l : mll_shuffle_nondep l -> mll_shuffle l.
@@ -74,16 +82,8 @@ Proof.
   - exact (ax_shuffle b X).
   - exact (tr_shuffle A B s s0 IHπ1 IHπ2).
   - subst. 
-    exact (pr_shuffle  Γ1 A B  Γ2 IHπ).
+    exact (pr_shuffle IHπ).
 Qed.
-
-Arguments ax_shuffle {_ _}, [_] _, _ _.
-Arguments pr_shuffle [_ _ _ _] _, _ [_ _ _] _, _ _ _ [_] _.
-Arguments tr_shuffle [_ _ _ _ _ _ _ _ _ _] _ _, [_ _ _ _ _ _ _ _] _ _ _ _, _ _ _ _ [_ _ _ _] _ _ _ _.
-
-Arguments ax_shuffle_nondep {_ _}, [_] _, _ _.
-Arguments pr_shuffle_nondep [_ _ _ _] _, _ [_ _ _] _, _ _ _ [_] _.
-Arguments tr_shuffle_nondep [_ _ _ _ _ _ _ _ _ _] _ _, [_ _ _ _ _ _ _ _] _ _ _ _, _ _ _ _ [_ _ _ _] _ _ _ _.
 
 Fixpoint psize_shuffle l (pi : ⊢' l) :=
 match pi with
@@ -207,31 +207,9 @@ rewrite perm_sym in p.
 by destruct (ex_size_shuffle_nondep _ p pi).
 Qed.
 
-Inductive parr_equiv : forall l1 l2, ⊢'' l1 -> ⊢'' l2 -> Type :=
-| parr_equiv_refl :
-    forall l (π : ⊢'' l), parr_equiv π π
-| parr_equiv_sym :
-    forall l1 l2 (π1 : ⊢'' l1) (π2 : ⊢'' l2),
-      parr_equiv π1 π2 -> parr_equiv π2 π1
-| parr_equiv_trans :
-    forall l1 l2 l3 (π1 : ⊢'' l1) (π2 : ⊢'' l2) (π3 : ⊢'' l3),
-      parr_equiv π1 π2 -> parr_equiv π2 π3 -> parr_equiv π1 π3
+Inductive parr_equiv Σ : crelation (⊢'' Σ) :=
 | parr_equiv_swap :
-    forall Γ1 Γ2 Γ3 A B C D (π : ⊢'' Γ1 ++ A :: B :: Γ2 ++ C :: D :: Γ3),
-      parr_equiv
-        (@pr_shuffle_nondep _ _ C D (Γ1 ++ [:: A ⅋ B] ++ Γ2) Γ3
-          (catA _ _ _)
-          erefl
-          (@pr_shuffle_nondep _ _ A B Γ1 (Γ2 ++ C :: D :: Γ3)
-            erefl erefl π))
-        (@pr_shuffle_nondep _ _ A B Γ1 (Γ2 ++ [:: C ⅋ D] ++ Γ3)
-          erefl erefl
-          (@pr_shuffle_nondep _ _ C D (Γ1 ++ [:: A; B] ++ Γ2) Γ3
-            (catA _ _ _)
-            (catA Γ1 ([:: A; B] ++ Γ2) ([:: C ⅋ D] ++ Γ3)) 
-            π))
-| parr_equiv_swap2 :
-  forall Γ Δ Δ' Σ Σ' A B C D Γ1 Γ2 Γ3   
+  forall Γ Δ Δ' A B C D Γ1 Γ2 Γ3   
          (eqΓ : Γ = Γ1  ++ [:: A, B & (Γ2  ++ [:: C, D & Γ3])]) 
          (eqΔa : Δ = Γ1  ++ A ⅋ B :: Γ2  ++ [:: C, D & Γ3]) 
          (eqΔb : Δ = (Γ1  ++ A ⅋ B ::  Γ2) ++ [:: C, D & Γ3]) 
@@ -239,36 +217,18 @@ Inductive parr_equiv : forall l1 l2, ⊢'' l1 -> ⊢'' l2 -> Type :=
          (eqΓr : Γ = (Γ1  ++ [:: A, B & Γ2]) ++ [:: C, D & Γ3])
          (eqΔ'a : Δ' = (Γ1  ++ [:: A, B &  Γ2]) ++ C ⅋ D :: Γ3) 
          (eqΔ'b : Δ' = Γ1  ++ [:: A, B & (Γ2 ++ C ⅋ D :: Γ3)]) 
-         (eqΔ' : Σ' = Γ1  ++ A ⅋ B :: (Γ2 ++ C ⅋ D :: Γ3))
+         (eqΔ' : Σ = Γ1  ++ A ⅋ B :: (Γ2 ++ C ⅋ D :: Γ3))
          (π : ⊢'' Γ),
     parr_equiv
       (@pr_shuffle_nondep Δ Σ C D (Γ1 ++ [:: A ⅋ B & Γ2]) Γ3 eqΔb eqΣ
          (@pr_shuffle_nondep Γ Δ A B Γ1 (Γ2 ++ [:: C, D & Γ3]) eqΓ eqΔa π))
-      (@pr_shuffle_nondep Δ' Σ' A B Γ1 (Γ2 ++ C ⅋ D :: Γ3) eqΔ'b eqΔ'
+      (@pr_shuffle_nondep Δ' Σ A B Γ1 (Γ2 ++ C ⅋ D :: Γ3) eqΔ'b eqΔ'
          (@pr_shuffle_nondep Γ Δ' C D (Γ1 ++ [:: A, B & Γ2]) Γ3 eqΓr eqΔ'a π)).
 
-Lemma parr_sym l1 l2 (π1 : ⊢'' l1) (π2 : ⊢'' l2) : parr_equiv π1 π2 -> parr_equiv π2 π1.
-Proof. 
-move=> H.
-by apply parr_equiv_sym.
-Qed.
-
-Lemma parr_equiv_perm_trans l1 l2 l3 (π1 : ⊢'' l1) (π2 : ⊢'' l2)  (π3 : ⊢'' l3) : 
-  parr_equiv π1 π2 -> parr_equiv π2 π3 -> parr_equiv π1 π3.
+Lemma test_invol Σ (π1 : ⊢'' Σ) (π2 : ⊢'' Σ) (π3 : ⊢'' Σ) :
+  parr_equiv π1 π2 -> parr_equiv π3 π2 -> π1 = π3.
 Proof.
-move => H1 H2.
-apply: parr_equiv_trans H1 H2.
-Qed.
 
-Lemma parr_equiv_same l1 l2 (π1 : ⊢'' l1) (π2 : ⊢'' l2) : parr_equiv π1 π2 -> l1 = l2.
-Proof.
-move => H.
-elim: H => //=.
-  move=> l0 l3 l4 pi0' pi3' pi4' H03 IH03 H34 IH34; by rewrite IH03 IH34.
-move => gamma1 gamma2 A B C D H.
-  by rewrite -!catA.
-move=> Γ Σ Δ Σ' Δ' A B C D Γ1 Γ2 Γ3 eqΓ eqΣa eqΣb eqΣ' eqΓr eqΣ'a eqΣ'b eqΔ' π.
-  by rewrite eqΔ' eqΣ' -!catA catA /=.
 Qed.
 
 Lemma commutation_parr A B C D (π : ⊢'' [:: A; B; C; D]) :
@@ -276,6 +236,6 @@ Lemma commutation_parr A B C D (π : ⊢'' [:: A; B; C; D]) :
   (pr_shuffle_nondep [:: A ⅋ B] [::] erefl erefl (pr_shuffle_nondep [::] [:: C; D] erefl erefl π))
   (pr_shuffle_nondep [::] [:: C ⅋ D] erefl erefl (pr_shuffle_nondep [:: A; B] [::] erefl erefl π)).
 Proof.
-apply: (@parr_equiv_swap2 [:: A; B; C; D] [:: A ⅋ B; C; D] [:: A; B; C ⅋ D] [:: A ⅋ B; C ⅋ D]
-         [:: A ⅋ B; C ⅋ D] A B C D [::] [::] [::]).
+apply (@parr_equiv_swap [:: A ⅋ B; C ⅋ D] [:: A; B; C; D] [:: A ⅋ B; C; D] [:: A; B; C ⅋ D]
+         A B C D [::] [::] [::]).
 Qed.
