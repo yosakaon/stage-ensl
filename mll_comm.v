@@ -224,6 +224,18 @@ Inductive parr_equiv Σ : crelation (⊢'' Σ) :=
       (@pr_shuffle_nondep Δ' Σ A B Γ1 (Γ2 ++ C ⅋ D :: Γ3) eqΔ'b eqΔ'
          (@pr_shuffle_nondep Γ Δ' C D (Γ1 ++ [:: A, B & Γ2]) Γ3 eqΓr eqΔ'a π)).
 
+(*
+Inductive cclos_refl_sym_trans A (R : crelation A) : crelation A :=
+| crst_step x y : R x y -> cclos_refl_sym_trans R x y
+| crst_refl x : cclos_refl_sym_trans R x x
+| crst_sym x y : cclos_refl_sym_trans R x y -> cclos_refl_sym_trans R y x
+| crst_trans x y z :
+    cclos_refl_sym_trans R x y -> cclos_refl_sym_trans R y z ->
+    cclos_refl_sym_trans R x z.
+*)
+
+(* + congruence *)
+
 Definition parr_equiv_cl Σ (π1 π2 : ⊢'' Σ) : Type :=
   forall (R : forall Σ, crelation (⊢'' Σ)),  
     (forall Σ, Equivalence (R Σ)) ->
@@ -279,7 +291,7 @@ Lemma test_invol Σ (π1 : ⊢'' Σ) (π2 : ⊢'' Σ) (π3 : ⊢'' Σ) :
   parr_equiv π1 π2 -> parr_equiv π3 π2 -> π1 = π3.
 Proof.
 move => H1 H2.
-dependent destruction H1; dependent destruction H2; subst.
+destruct H1. dependent destruction H2. subst.
 have hΓ : Γ5 = Γ2 by move: (app_inv_tail _ _  _ x2).
 subst.
 by rewrite (eq_irrelevance eqΓ0 eqΓ) (eq_irrelevance eqΔb0 eqΔb) (eq_irrelevance eqΣ0 eqΣ).
@@ -290,22 +302,20 @@ Lemma commutation_parr A B C D (π : ⊢'' [:: A; B; C; D]) :
   (pr_shuffle_nondep [:: A ⅋ B] [::] erefl erefl (pr_shuffle_nondep [::] [:: C; D] erefl erefl π))
   (pr_shuffle_nondep [::] [:: C ⅋ D] erefl erefl (pr_shuffle_nondep [:: A; B] [::] erefl erefl π)).
 Proof.
-apply (@parr_equiv_swap [:: A ⅋ B; C ⅋ D] [:: A; B; C; D] [:: A ⅋ B; C; D] [:: A; B; C ⅋ D]
-         A B C D [::] [::] [::]).
+apply (@parr_equiv_swap _ _ _ _ _ _ _ _ [::] [::]).
 Qed.
 
-Lemma middle A B C D ΓlAB ΓrAB ΓlCD ΓrCD Σ :
-  Σ = ΓlAB ++ A ⅋ B :: ΓrAB ->
-  Σ = ΓlCD ++ C ⅋ D :: ΓrCD ->
+Lemma middle A B C D ΓlAB ΓrAB ΓlCD ΓrCD :
+  ΓlAB ++ A ⅋ B :: ΓrAB = ΓlCD ++ C ⅋ D :: ΓrCD ->
   ΓlAB <> ΓlCD ->
-  { Γm & (ΓlCD = ΓlAB ++ A ⅋ B :: Γm) * (ΓrAB = Γm ++ C ⅋ D :: ΓrCD) } + 
-  { Γm & (ΓlAB = ΓlCD ++ C ⅋ D :: Γm) * (ΓrCD = Γm ++ A ⅋ B :: ΓrAB) }.
+  { Γm & ΓlCD = ΓlAB ++ A ⅋ B :: Γm & ΓrAB = Γm ++ C ⅋ D :: ΓrCD } + 
+  { Γm & ΓlAB = ΓlCD ++ C ⅋ D :: Γm & ΓrCD = Γm ++ A ⅋ B :: ΓrAB }.
 Proof.
-move=> eqAB eqCD neqL.
+move=> eqABCD neqL.
 have Heq : ΓlAB ++ A ⅋ B :: ΓrAB = ΓlCD ++ C ⅋ D :: ΓrCD by congruence.
-apply elt_eq_elt_trichotT in Heq as [ [ [Γm H1 H2] | [H1 [H2 H3]] ] | [Γm H1 H2] ] => //=.
-  left; exists Γm; by split => //.
-  right; exists Γm; by split => //=.
+apply elt_eq_elt_trichotT in Heq as [ [ [Γm H1 H2] | [H1 _] ] | [Γm H1 H2] ] => //=.
+  by left; exists Γm => //.
+  by right; exists Γm => //=.
 Qed.
 
 Inductive rule_equiv Σ : crelation (⊢'' Σ) :=
@@ -341,13 +351,12 @@ Inductive middle_s A B C D ΓlAB ΓrAB ΓlCD ΓrCD : Type :=
     ΓrCD = Γm ++ A ⅋ B :: ΓrAB ->
     middle_s A B C D ΓlAB ΓrAB ΓlCD ΓrCD.
 
-Lemma middleP A B C D ΓlAB ΓrAB ΓlCD ΓrCD Σ :
-  Σ = ΓlAB ++ A ⅋ B :: ΓrAB ->
-  Σ = ΓlCD ++ C ⅋ D :: ΓrCD ->
+Lemma middleP A B C D ΓlAB ΓrAB ΓlCD ΓrCD :
+  ΓlAB ++ A ⅋ B :: ΓrAB = ΓlCD ++ C ⅋ D :: ΓrCD ->
   ΓlAB <> ΓlCD -> middle_s A B C D ΓlAB ΓrAB ΓlCD ΓrCD.
 Proof.
-move => eqAB eqCD neqL.
-case: (middle A B C D _ _ eqAB eqCD neqL) => [[Γm [h1 h2]] | [Γm [h1 h2]]].
+move => eqABCD neqL.
+case: (middle A B C D _ _ eqABCD neqL) => [[Γm h1 h2] | [Γm h1 h2]].
   exact: middleABl Γm h1 h2.
   exact: middleCDl Γm h1 h2.
 Qed.
