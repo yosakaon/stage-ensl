@@ -206,7 +206,16 @@ rewrite perm_sym in p.
 by destruct (ex_size_shuffle_nondep _ p pi).
 Qed.
 
-Inductive parr_equiv Σ : crelation (⊢'' Σ) :=
+Reserved Notation "⊢_pr l" (at level 65).
+
+Inductive pr_nondep : seq formula -> Type :=
+| prr_nondep Γ Δ A B Γ1 Γ2 :
+ Γ =  Γ1 ++ [:: A, B & Γ2] -> 
+ Δ =  Γ1 ++ A ⅋ B :: Γ2 -> 
+ ⊢_pr Γ -> ⊢_pr Δ
+where "⊢_pr l" := (pr_nondep l).
+
+(*Inductive parr_equiv Σ : crelation (⊢'' Σ) :=
 | parr_equiv_swap :
   forall Γ Δ Δ' A B C D Γ1 Γ2 Γ3   
          (eqΓ : Γ = Γ1  ++ [:: A, B & (Γ2  ++ [:: C, D & Γ3])]) 
@@ -222,9 +231,26 @@ Inductive parr_equiv Σ : crelation (⊢'' Σ) :=
       (@pr_shuffle_nondep Δ Σ C D (Γ1 ++ [:: A ⅋ B & Γ2]) Γ3 eqΔb eqΣ
          (@pr_shuffle_nondep Γ Δ A B Γ1 (Γ2 ++ [:: C, D & Γ3]) eqΓ eqΔa π))
       (@pr_shuffle_nondep Δ' Σ A B Γ1 (Γ2 ++ C ⅋ D :: Γ3) eqΔ'b eqΔ'
-         (@pr_shuffle_nondep Γ Δ' C D (Γ1 ++ [:: A, B & Γ2]) Γ3 eqΓr eqΔ'a π)).
+         (@pr_shuffle_nondep Γ Δ' C D (Γ1 ++ [:: A, B & Γ2]) Γ3 eqΓr eqΔ'a π)).*)
 
-(*
+Inductive parr_equiv Σ : crelation (⊢_pr Σ) :=
+| parr_equiv_swap :
+  forall Γ Δ Δ' A B C D Γ1 Γ2 Γ3   
+         (eqΓ : Γ = Γ1  ++ [:: A, B & (Γ2  ++ [:: C, D & Γ3])]) 
+         (eqΔa : Δ = Γ1  ++ A ⅋ B :: Γ2  ++ [:: C, D & Γ3]) 
+         (eqΔb : Δ = (Γ1  ++ A ⅋ B ::  Γ2) ++ [:: C, D & Γ3]) 
+         (eqΣ : Σ = (Γ1  ++ [:: A ⅋ B &  Γ2]) ++ C ⅋ D :: Γ3) 
+         (eqΓr : Γ = (Γ1  ++ [:: A, B & Γ2]) ++ [:: C, D & Γ3])
+         (eqΔ'a : Δ' = (Γ1  ++ [:: A, B &  Γ2]) ++ C ⅋ D :: Γ3) 
+         (eqΔ'b : Δ' = Γ1  ++ [:: A, B & (Γ2 ++ C ⅋ D :: Γ3)]) 
+         (eqΔ' : Σ = Γ1  ++ A ⅋ B :: (Γ2 ++ C ⅋ D :: Γ3))
+         (π : ⊢_pr Γ),
+    parr_equiv
+      (@prr_nondep Δ Σ C D (Γ1 ++ [:: A ⅋ B & Γ2]) Γ3 eqΔb eqΣ
+         (@prr_nondep Γ Δ A B Γ1 (Γ2 ++ [:: C, D & Γ3]) eqΓ eqΔa π))
+      (@prr_nondep Δ' Σ A B Γ1 (Γ2 ++ C ⅋ D :: Γ3) eqΔ'b eqΔ'
+         (@prr_nondep Γ Δ' C D (Γ1 ++ [:: A, B & Γ2]) Γ3 eqΓr eqΔ'a π)).
+
 Inductive cclos_refl_sym_trans A (R : crelation A) : crelation A :=
 | crst_step x y : R x y -> cclos_refl_sym_trans R x y
 | crst_refl x : cclos_refl_sym_trans R x x
@@ -232,11 +258,29 @@ Inductive cclos_refl_sym_trans A (R : crelation A) : crelation A :=
 | crst_trans x y z :
     cclos_refl_sym_trans R x y -> cclos_refl_sym_trans R y z ->
     cclos_refl_sym_trans R x z.
-*)
 
-(* + congruence *)
+Inductive parr_equiv_gen : forall Σ, crelation (⊢_pr Σ) :=
+| peg_base
+    (Σ : seq formula)
+    (π π' : ⊢_pr Σ) :
+    parr_equiv π π' ->
+    @parr_equiv_gen Σ π π'
+| peg_congr
+    (Σ0 Δ : seq formula)
+    (A B : formula)
+    (Γ1 Γ2 : seq formula)
+    (eqΓ : Σ0 = Γ1 ++ [:: A, B & Γ2])
+    (eqΔ : Δ = Γ1 ++ A ⅋ B :: Γ2)
+    (π π' : ⊢_pr Σ0) :
+    @parr_equiv_gen Σ0 π π' ->
+    @parr_equiv_gen Δ
+      (prr_nondep _ _ Γ1 Γ2 eqΓ eqΔ π)
+      (prr_nondep _ _ Γ1 Γ2 eqΓ eqΔ π').
 
-Definition parr_equiv_cl Σ (π1 π2 : ⊢'' Σ) : Type :=
+Definition parr_equiv_cl Σ :=
+  cclos_refl_sym_trans (@parr_equiv_gen Σ).
+
+(*Definition parr_equiv_cl Σ (π1 π2 : ⊢'' Σ) : Type :=
   forall (R : forall Σ, crelation (⊢'' Σ)),  
     (forall Σ, Equivalence (R Σ)) ->
     (forall Σ π π', parr_equiv π π' -> R Σ π π') ->
@@ -244,40 +288,48 @@ Definition parr_equiv_cl Σ (π1 π2 : ⊢'' Σ) : Type :=
         R Σ0 π π' ->
         R Δ (@pr_shuffle_nondep Σ0 Δ A B Γ1 Γ2 eqΓ eqΔ π)
              (@pr_shuffle_nondep Σ0 Δ A B Γ1 Γ2 eqΓ eqΔ π')) ->
-    R Σ π1 π2.
+    R Σ π1 π2.*)
 
 Instance parr_equiv_cl_Equivalence (Σ : seq formula) :
     Equivalence (@parr_equiv_cl Σ).
 Proof.
 constructor.
-- move => π Rel Heq Hpareq Hcong.
-  reflexivity.
-- move => π1 π2 H R Heq Hbase Hp.
-  symmetry.
-  by apply: H => //=.
-- move => π1 π2 π3 H12 H23 R Heq H Hp.
-  transitivity π2. 
-    by apply H12. 
-    by apply H23.
+- move => π.
+  rewrite /parr_equiv_cl.
+  by apply crst_refl.
+- move => π1 π2 H.
+  rewrite /parr_equiv_cl.
+  rewrite /parr_equiv_cl in H.
+  by apply: crst_sym.
+- move => π1 π2 π3 H12 H23.
+  rewrite /parr_equiv_cl.
+  rewrite /parr_equiv_cl in H12.
+  rewrite /parr_equiv_cl in H23.
+  exact: crst_trans H12 H23.
 Qed.
 
 (**)
-Lemma parr_equiv_into_cl Σ (π1 π2 : ⊢'' Σ) :
+Lemma parr_equiv_into_cl Σ (π1 π2 : ⊢_pr Σ) :
   parr_equiv π1 π2 -> parr_equiv_cl π1 π2.
 Proof.
-  move => H R Heq Hbase Hcong.
-  by apply Hbase.
+  move => H.
+  constructor.
+  by constructor.
 Qed.
 
 (* congruence *)
-Lemma parr_equiv_cl_cong Σ Δ A B Γ1 Γ2 eqΓ eqΔ (π π' : ⊢'' Σ) :
+Lemma parr_equiv_cl_cong Σ Δ A B Γ1 Γ2 eqΓ eqΔ (π π' : ⊢_pr Σ) :
   parr_equiv_cl π π' -> parr_equiv_cl
-    (@pr_shuffle_nondep Σ Δ A B Γ1 Γ2 eqΓ eqΔ π)
-    (@pr_shuffle_nondep Σ Δ A B Γ1 Γ2 eqΓ eqΔ π').
+    (@prr_nondep Σ Δ A B Γ1 Γ2 eqΓ eqΔ π)
+    (@prr_nondep Σ Δ A B Γ1 Γ2 eqΓ eqΔ π').
 Proof.
-  move => H R Heq Hbase Hcong.
-  apply Hcong.
-  by apply H.
+  move => H.
+  elim: H => [p p' hgen | p | p p' IH | p p' p'' _ IH1 _ IH2].
+- apply: crst_step.
+  exact: peg_congr hgen.
+- exact: crst_refl.
+- exact: crst_sym.
+- apply (crst_trans IH1 IH2).
 Qed.
 
 Lemma parr_equiv_sym (Σ : seq formula) π1 π2 : parr_equiv_cl π1 π2 -> @parr_equiv_cl Σ π2 π1.
@@ -287,7 +339,7 @@ Lemma parr_equiv_trans  (Σ : seq formula) π1 π2 π3 :
   parr_equiv_cl π1 π2 -> parr_equiv_cl π2 π3 -> @parr_equiv_cl Σ π1 π3.
 Proof. by transitivity π2. Qed.
 
-Lemma test_invol Σ (π1 : ⊢'' Σ) (π2 : ⊢'' Σ) (π3 : ⊢'' Σ) :
+Lemma test_invol Σ (π1 : ⊢_pr Σ) (π2 : ⊢_pr Σ) (π3 : ⊢_pr Σ) :
   parr_equiv π1 π2 -> parr_equiv π3 π2 -> π1 = π3.
 Proof.
 move => H1 H2.
@@ -297,10 +349,10 @@ subst.
 by rewrite (eq_irrelevance eqΓ0 eqΓ) (eq_irrelevance eqΔb0 eqΔb) (eq_irrelevance eqΣ0 eqΣ).
 Qed.
 
-Lemma commutation_parr A B C D (π : ⊢'' [:: A; B; C; D]) :
+Lemma commutation_parr A B C D (π : ⊢_pr [:: A; B; C; D]) :
   parr_equiv
-  (pr_shuffle_nondep [:: A ⅋ B] [::] erefl erefl (pr_shuffle_nondep [::] [:: C; D] erefl erefl π))
-  (pr_shuffle_nondep [::] [:: C ⅋ D] erefl erefl (pr_shuffle_nondep [:: A; B] [::] erefl erefl π)).
+  (prr_nondep _ _ [:: A ⅋ B] [::] erefl erefl (prr_nondep _ _ [::] [:: C; D] erefl erefl π))
+  (prr_nondep _ _ [::] [:: C ⅋ D] erefl erefl (prr_nondep _ _ [:: A; B] [::] erefl erefl π)).
 Proof.
 apply (@parr_equiv_swap _ _ _ _ _ _ _ _ [::] [::]).
 Qed.
@@ -318,27 +370,55 @@ apply elt_eq_elt_trichotT in Heq as [ [ [Γm H1 H2] | [H1 _] ] | [Γm H1 H2] ] =
   by right; exists Γm => //=.
 Qed.
 
-Inductive rule_equiv Σ : crelation (⊢'' Σ) :=
+Inductive rule_equiv (A B C D : formula) Σ : crelation (⊢_pr Σ) :=
 | rule_parr_equiv :
   forall Δ_AB Δ_CD Σ'
-         A B C D
          ΓlAB ΓrAB ΓlCD ΓrCD
          ΓlCD' ΓrCD' ΓlAB' ΓrAB'
+         Γm
          (eqAB : Σ = ΓlAB ++ A ⅋ B :: ΓrAB)
          (eqCD : Σ = ΓlCD ++ C ⅋ D :: ΓrCD)
-         (neqL : ΓlAB <> ΓlCD)
          (eqΔ_AB : Δ_AB = ΓlAB ++ [:: A, B & ΓrAB])
          (eqΔ_CD : Δ_CD = ΓlCD ++ [:: C, D & ΓrCD])
          (eqCD_in_AB : Δ_AB = ΓlCD' ++ C ⅋ D :: ΓrCD')
          (eqAB_in_CD : Δ_CD = ΓlAB' ++ A ⅋ B :: ΓrAB')
          (eq1 : Σ' = ΓlCD' ++ [:: C, D & ΓrCD'])
          (eq2 : Σ' = ΓlAB' ++ [:: A, B & ΓrAB'])
-         (π : ⊢'' Σ'),
-    rule_equiv
-      (@pr_shuffle_nondep Δ_AB Σ A B ΓlAB ΓrAB eqΔ_AB eqAB
-         (@pr_shuffle_nondep Σ' Δ_AB C D ΓlCD' ΓrCD' eq1 eqCD_in_AB π))
-      (@pr_shuffle_nondep Δ_CD Σ C D ΓlCD ΓrCD eqΔ_CD eqCD
-         (@pr_shuffle_nondep Σ' Δ_CD A B ΓlAB' ΓrAB' eq2 eqAB_in_CD π)).
+         (neq2 : (ΓlAB = ΓlCD ++ C ⅋ D :: Γm /\ ΓlCD' = ΓlCD /\ ΓrAB' = ΓrAB)
+                 \/
+                   (ΓlCD = ΓlAB ++ A ⅋ B :: Γm /\ ΓlAB' = ΓlAB /\ ΓrCD' = ΓrCD))
+         (π : ⊢_pr Σ'),
+    @rule_equiv A B C D Σ
+      (@prr_nondep Δ_AB Σ A B ΓlAB ΓrAB eqΔ_AB eqAB
+         (@prr_nondep Σ' Δ_AB C D ΓlCD' ΓrCD' eq1 eqCD_in_AB π))
+      (@prr_nondep Δ_CD Σ C D ΓlCD ΓrCD eqΔ_CD eqCD
+         (@prr_nondep Σ' Δ_CD A B ΓlAB' ΓrAB' eq2 eqAB_in_CD π)).
+
+Inductive rule_equiv1 (A B C D : formula) : forall (Σ : seq formula), crelation (⊢_pr Σ) :=
+| rule_parr_equiv1 : 
+  forall (Σ_interne Σ_externe : seq formula)
+         (Ctx : ⊢_pr Σ_interne -> ⊢_pr Σ_externe)
+         Δ_AB Δ_CD Σ'
+         ΓlAB ΓrAB ΓlCD ΓrCD
+         ΓlCD' ΓrCD' ΓlAB' ΓrAB'
+         Γm
+         (eqAB : Σ_interne = ΓlAB ++ A ⅋ B :: ΓrAB) 
+         (eqCD : Σ_interne = ΓlCD ++ C ⅋ D :: ΓrCD)
+         (eqΔ_AB : Δ_AB = ΓlAB ++ [:: A, B & ΓrAB])
+         (eqΔ_CD : Δ_CD = ΓlCD ++ [:: C, D & ΓrCD])
+         (eqCD_in_AB : Δ_AB = ΓlCD' ++ C ⅋ D :: ΓrCD')
+         (eqAB_in_CD : Δ_CD = ΓlAB' ++ A ⅋ B :: ΓrAB')
+         (eq1 : Σ' = ΓlCD' ++ [:: C, D & ΓrCD'])
+         (eq2 : Σ' = ΓlAB' ++ [:: A, B & ΓrAB'])
+         (neq2 : (ΓlAB = ΓlCD ++ C ⅋ D :: Γm /\ ΓlCD' = ΓlCD /\ ΓrAB' = ΓrAB)
+                 \/
+                   (ΓlCD = ΓlAB ++ A ⅋ B :: Γm /\ ΓlAB' = ΓlAB /\ ΓrCD' = ΓrCD))
+         (π : ⊢_pr Σ'),
+    @rule_equiv1 A B C D Σ_externe
+      (Ctx (@prr_nondep Δ_AB Σ_interne A B ΓlAB ΓrAB eqΔ_AB eqAB
+              (@prr_nondep Σ' Δ_AB C D ΓlCD' ΓrCD' eq1 eqCD_in_AB π)))
+      (Ctx (@prr_nondep Δ_CD Σ_interne C D ΓlCD ΓrCD eqΔ_CD eqCD
+              (@prr_nondep Σ' Δ_CD A B ΓlAB' ΓrAB' eq2 eqAB_in_CD π))).
 
 (* sert a nommer les deux cas *)
 Inductive middle_s A B C D ΓlAB ΓrAB ΓlCD ΓrCD : Type :=
@@ -361,21 +441,147 @@ case: (middle A B C D _ _ eqABCD neqL) => [[Γm h1 h2] | [Γm h1 h2]].
   exact: middleCDl Γm h1 h2.
 Qed.
 
-Lemma rule_equiv_into_cl Σ (π1 π2 : ⊢'' Σ) :
-  rule_equiv π1 π2 -> parr_equiv_cl π1 π2.
+Lemma rule_equiv_sym A B C D Σ (π1 π2 : ⊢_pr Σ) :
+  rule_equiv A B C D π1 π2 -> rule_equiv C D A B π2 π1.
 Proof.
-move => R Rel Heq Hbase Hcong.
-elim: R => Δ_AB Δ_CD Σ_top A B C D
-             ΓlAB ΓrAB ΓlCD ΓrCD ΓlCD' ΓrCD' ΓlAB' ΓrAB'
-             eqAB eqCD neqL eqΔ_AB eqΔ_CD
-             eqCD_in_AB eqAB_in_CD eq1 eq2 π.
-symmetry.
-case: (middleP _ _ _ _ _ _ eqAB eqCD neqL) => [Γm h1 h2 | Γm h1 h2].
-subst ΓlCD ΓrAB.
-apply Hbase.
-admit.
+move=> H; dependent destruction H; subst.
+apply: rule_parr_equiv => //=.
+case: neq2 => [H | H].
+  right. exact: H.
+  left. exact: H.
+Qed.
+
+Lemma rule_equiv_sym1 A B C D Σ (π1 π2 : ⊢_pr Σ) :
+  rule_equiv1 A B C D π1 π2 -> rule_equiv1 C D A B π2 π1.
+Proof.
+move=> H; dependent destruction H; subst.
+apply rule_parr_equiv1 with (Γm := Γm) => //=.
+case: neq2 => [H | H].
+  right; exact: H.
+  left; exact: H.
+Qed.
+
+Lemma commutation_rule A B C D (π : ⊢_pr [:: A; B; C; D]) :
+  rule_equiv A B C D
+  (prr_nondep A B [::] [:: C ⅋ D] erefl erefl (prr_nondep C D [:: A; B] [::] erefl erefl π))
+  (prr_nondep C D [:: A ⅋ B] [::] erefl erefl (prr_nondep A B [::] [:: C; D] erefl erefl π)).
+Proof.
+apply: rule_parr_equiv.
+by right; split => //=. 
+Qed.
+
+Lemma commutation_rule1 A B C D (π : ⊢_pr [:: A; B; C; D]) :
+  rule_equiv1 A B C D
+  (prr_nondep A B [::] [:: C ⅋ D] erefl erefl (prr_nondep C D [:: A; B] [::] erefl erefl π))
+  (prr_nondep C D [:: A ⅋ B] [::] erefl erefl (prr_nondep A B [::] [:: C; D] erefl erefl π)).
+Proof.
+apply rule_parr_equiv1 with (Ctx := fun x => x) (Γm := [::]).
+by right; split => //=. 
+Qed.
+
+Lemma test_invol_rule Σ A B C D (π1 : ⊢_pr Σ) (π2 : ⊢_pr Σ) (π3 : ⊢_pr Σ) :
+  rule_equiv A B C D π1 π2 -> rule_equiv A B C D π3 π2 -> π1 = π3.
+Proof.
+move => H1 H2.
+dependent destruction H1; dependent destruction H2; subst.
+case : neq2 => [ [H ] [H1 H2] | H] => //=.
+  case: neq0 => [[H'] [H1' H2'] | H'] => //=.
+    have HlAB : ΓlAB = ΓlAB0.
+      rewrite H' H.
+      congr(_++_).
+      move: eqAB eqAB0.
+      rewrite H H' -H2 -!catA /=.
+      move => E1 E2.
+      move: E1.
+      move=> /app_inv_head E1.
+      have := congr1 behead E1 => /= E1'.
+      move: E2.
+      move=> /app_inv_head E2.
+      have := congr1 behead E2 => /= E2'.
+      f_equal.
+      subst.
+      have := congr1 behead E2 => /= E2''.
+      move: E2''.
+      by move=> /app_inv_tail E2''.
+    subst.
+    have Hm : Γm = Γm0.
+      move : HlAB => /app_inv_head E1.
+      by have := congr1 behead E1 => /= E2''.
+    subst.
+    have HrCD' : ΓrCD' = ΓrCD'0.
+      rewrite eqCD_in_AB in eqCD_in_AB0.
+      move : eqCD_in_AB0=> /app_inv_head E2.
+      by have := congr1 behead E2 => /= E2''.
+    subst.
+    rewrite (eq_irrelevance eqCD_in_AB eqCD_in_AB0) (eq_irrelevance eq0 eq1).
+    by rewrite (eq_irrelevance eqAB eqAB0).
+  case: H' => H'_lCD [H'_lAB' H'_rCD'].
+  have eq1_ := eq1.
+  rewrite H1 H'_lCD H'_lAB' -!catA  /= in eq1_.
+  move : eq1_ => /app_inv_head E1.
+  have E_A : A = A ⅋ B by injection E1.
+  exfalso.
+  induction A.
+    induction B.
+      discriminate.
+      discriminate.
+  have ff : forall F b X, F = bin b F X -> False.
+  clear; elim=> [b' a' | b' F1 IH1 F2 IH2] b X Eq; first by discriminate.
+  injection Eq => _ Eq_F1 _; exact: (IH1 _ _ Eq_F1). 
+  exact: (ff _ _ _ E_A).
+case: H => H'_lCD [H'_lAB' H'_rCD'].
+case: neq0 => [[H0_lAB0_CD [H0_lCD'0 H0_rAB']] | [H0_lCD_AB0 [H0_lAB' H0_rCD'0]]].
+  have eq0_ := eq0.
+  rewrite H'_lAB' H0_lCD'0 H'_lCD -!catA /= in eq0_.
+  apply (app_inv_head ΓlAB) in eq0_.
+  injection eq0_ => Eq _.
+  have ff : forall F b X, F = bin b F X -> False.
+    clear; elim=> [b' a' | b' F1 IH1 F2 IH2] b X Eq; first by discriminate.
+    by injection Eq => _ Eq_F1 _; exact: (IH1 _ _ Eq_F1). 
+  have E_A : A = A ⅋ B by injection eq0_.
+  exfalso.
+  exact: (ff _ _ _ E_A).
+have Eq_lAB : ΓlAB0 = ΓlAB by rewrite -H'_lAB' H0_lAB'.
+subst ΓlAB0.
+have Eq_rCD' : ΓrCD'0 = ΓrCD' by rewrite H0_rCD'0 -H'_rCD'.
+subst ΓrCD'.
+subst ΓlAB ΓrCD.
+have Eq_rAB : ΓrAB = ΓrAB0.
+  move: eqAB eqAB0 => -> E.
+  move : E => /app_inv_head E.
+  by have := congr1 behead E.
+subst ΓrAB0.
+have Eq_lCD' : ΓlCD' = ΓlCD'0.
+  move: eqCD_in_AB eqCD_in_AB0 => -> E.
+  by exact: (app_inv_tail _ _ _ E).
+subst ΓlCD'0.
+rewrite (eq_irrelevance eqCD_in_AB eqCD_in_AB0) (eq_irrelevance eq0 eq1).
+by rewrite (eq_irrelevance eqAB eqAB0).
+Qed.
+
+Lemma rule_equiv_cong : forall Σ Σ' A B C D Γl Γr
+  (eq_S : Σ = Γl ++ A ⅋ B :: Γr)
+  (eq_S' : Σ' = Γl ++ [:: A, B & Γr])
+  (π1 π2 : ⊢_pr Σ'),
+  rule_equiv1 A B C D π1 π2 -> 
+  rule_equiv1 A B C D (prr_nondep A B Γl Γr eq_S' eq_S π1) (prr_nondep A B Γl Γr eq_S' eq_S π2).
+Proof.
+intros.
 subst.
-symmetry.
-apply Hbase.
-admit.
-Admitted.
+dependent destruction X => //=.
+subst.
+apply rule_parr_equiv1 with (Ctx := fun x => prr_nondep A B Γl Γr erefl erefl (Ctx x)) (Γm := Γm) => //=.
+Qed.
+
+(* pas possible ?*)
+Lemma test_invol_rule1 Σ A B C D (π1 : ⊢_pr Σ) (π2 : ⊢_pr Σ) (π3 : ⊢_pr Σ) :
+  rule_equiv1 A B C D π1 π2 -> rule_equiv1 A B C D π3 π2 -> π1 = π3.
+Proof.
+move => H1 H2.
+dependent destruction H1; dependent destruction H2; subst.
+case : neq2 => [ [H ] [H1 H2] | H] => //=.
+case: neq0 => [[H'] [H1' H2'] | H'] => //=.
+have HlAB : ΓlAB = ΓlAB0.
+rewrite H' H.
+congr(_++_).
+Abort.
