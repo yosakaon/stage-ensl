@@ -375,7 +375,6 @@ Inductive rule_equiv (A B C D : formula) Σ : crelation (⊢_pr Σ) :=
   forall Δ_AB Δ_CD Σ'
          ΓlAB ΓrAB ΓlCD ΓrCD
          ΓlCD' ΓrCD' ΓlAB' ΓrAB'
-         Γm
          (eqAB : Σ = ΓlAB ++ A ⅋ B :: ΓrAB)
          (eqCD : Σ = ΓlCD ++ C ⅋ D :: ΓrCD)
          (eqΔ_AB : Δ_AB = ΓlAB ++ [:: A, B & ΓrAB])
@@ -384,15 +383,169 @@ Inductive rule_equiv (A B C D : formula) Σ : crelation (⊢_pr Σ) :=
          (eqAB_in_CD : Δ_CD = ΓlAB' ++ A ⅋ B :: ΓrAB')
          (eq1 : Σ' = ΓlCD' ++ [:: C, D & ΓrCD'])
          (eq2 : Σ' = ΓlAB' ++ [:: A, B & ΓrAB'])
+         (neq2 : ΓlAB <> ΓlCD)
+(*
          (neq2 : (ΓlAB = ΓlCD ++ C ⅋ D :: Γm /\ ΓlCD' = ΓlCD /\ ΓrAB' = ΓrAB)
                  \/
                    (ΓlCD = ΓlAB ++ A ⅋ B :: Γm /\ ΓlAB' = ΓlAB /\ ΓrCD' = ΓrCD))
+*)
          (π : ⊢_pr Σ'),
     @rule_equiv A B C D Σ
       (@prr_nondep Δ_AB Σ A B ΓlAB ΓrAB eqΔ_AB eqAB
          (@prr_nondep Σ' Δ_AB C D ΓlCD' ΓrCD' eq1 eqCD_in_AB π))
       (@prr_nondep Δ_CD Σ C D ΓlCD ΓrCD eqΔ_CD eqCD
          (@prr_nondep Σ' Δ_CD A B ΓlAB' ΓrAB' eq2 eqAB_in_CD π)).
+
+Lemma parr_middle_case A B C Σ Σ' D Δ_AB Δ_CD
+         ΓlAB ΓrAB ΓlCD ΓrCD
+         ΓlCD' ΓrCD' ΓlAB' ΓrAB'
+         (eqAB : Σ = ΓlAB ++ A ⅋ B :: ΓrAB)
+         (eqCD : Σ = ΓlCD ++ C ⅋ D :: ΓrCD)
+         (eqΔ_AB : Δ_AB = ΓlAB ++ [:: A, B & ΓrAB])
+         (eqΔ_CD : Δ_CD = ΓlCD ++ [:: C, D & ΓrCD])
+         (eqCD_in_AB : Δ_AB = ΓlCD' ++ C ⅋ D :: ΓrCD')
+         (eqAB_in_CD : Δ_CD = ΓlAB' ++ A ⅋ B :: ΓrAB')
+         (eq1 : Σ' = ΓlCD' ++ [:: C, D & ΓrCD'])
+         (eq2 : Σ' = ΓlAB' ++ [:: A, B & ΓrAB'])
+         (neq2 : ΓlAB <> ΓlCD) :
+  (ΓlAB = ΓlAB' /\ ΓrCD = ΓrCD') \/ (ΓlCD = ΓlCD' /\ ΓrAB = ΓrAB').
+Proof.
+(*
+subst.
+decomp_list_eq eqCD.
+- left.
+  subst. list_simpl in *.
+  assert (rCD = rCD') as H'.
+  { rewrite 2 app_comm_cons, app_assoc in eqΔ_CD'.
+    decomp_list_eq eqΔ_CD'; subst; list_simpl in *.
+    - exfalso.
+      remember (l ++ C :: D :: l0 ++ F C D :: rCD') as l1.
+      remember (l ++ F C D :: l0 ++ C :: D :: rCD') as l2.
+      assert (l1 <> l2) as H.
+      { subst. intros H%app_inv_head. injection H as [= H].
+        symmetry in H. apply (F_up_l _ _ H). }
+      clear Heql1 Heql2.
+      decomp_list_eq eq2; subst; list_simpl in *.
+      + clear H.
+        apply app_inv_head in eqΔ_AB'.
+        injection eqΔ_AB' as [= H].
+        apply (F_up_l _ _ H).
+      + injection eq1 as [= ->].
+        apply app_inv_head in eqΔ_AB'. injection eqΔ_AB' as [= ->].
+        contradiction H. reflexivity.
+      + clear H.
+        apply app_inv_head in eqΔ_AB'.
+        injection eqΔ_AB' as [= H]. symmetry in H.
+        apply (F_up_l _ _ H).
+    - reflexivity.
+    - exfalso.
+      clear eqΔ_CD'0.
+      rewrite app_comm_cons, app_assoc in eqΔ_AB'.
+      remember (lAB ++ F A B :: l) as l1. clear Heql1.
+      rewrite 2 app_comm_cons, app_assoc in eq2.
+      remember (lCD' ++ C :: D :: l0) as l2. clear Heql2.
+      decomp_list_eq eq2; subst; list_simpl in *.
+      + apply (f_equal (@rev _)) in eqΔ_AB'. list_simpl in eqΔ_AB'.
+        apply app_inv_head in eqΔ_AB'.
+        injection eqΔ_AB' as [= H]. symmetry in H.
+        apply (F_up_r _ _ H).
+      + apply (f_equal (@rev _)) in eqΔ_AB'. list_simpl in eqΔ_AB'.
+        apply app_inv_head in eqΔ_AB'.
+        injection eqΔ_AB' as [= H]. symmetry in H.
+        apply (F_up_r _ _ H).
+      + destruct l3; list_simpl in *.
+        * injection eq1 as [= <- <-].
+          apply (f_equal (@rev _)) in eqΔ_AB'. list_simpl in eqΔ_AB'.
+          apply app_inv_head in eqΔ_AB'.
+          injection eqΔ_AB' as [= H]. symmetry in H.
+          apply (F_up_r2 _ _ _ H).
+        * injection eq1 as [= <- <-].
+          apply (f_equal (@rev _)) in eqΔ_AB'. list_simpl in eqΔ_AB'.
+          apply app_inv_head in eqΔ_AB'.
+          injection eqΔ_AB' as [= H]. symmetry in H.
+          apply (F_up_r _ _ H). }
+  subst.
+  rewrite 2 app_comm_cons in eqΔ_CD'. rewrite app_assoc in eqΔ_CD'.
+  apply app_inv_tail in eqΔ_CD'.
+  subst. list_simpl in *.
+  remember (l ++ C :: D :: rCD') as l0. clear Heql0.
+  decomp_list_eq eqΔ_AB'; subst; list_simpl in *.
+  + apply app_inv_head in eq2.
+    injection eq2 as [= HN _]. symmetry in HN.
+    exfalso. apply (F_up_l _ _ HN).
+  + easy.
+  + apply app_inv_head in eq2.
+    injection eq2 as [= HN _].
+    exfalso. apply (F_up_l _ _ HN).
+
+- right. left. subst. repeat split.
+
+- right. right.
+  subst. list_simpl in *.
+  assert (rAB = rAB') as H'.
+  { rewrite 2 app_comm_cons, app_assoc in eqΔ_AB'.
+    decomp_list_eq eqΔ_AB'; subst; list_simpl in *.
+    - exfalso.
+      remember (l ++ A :: B :: l0 ++ F A B :: rAB') as l1.
+      remember (l ++ F A B :: l0 ++ A :: B :: rAB') as l2.
+      assert (l1 <> l2) as H.
+      { subst. intros H%app_inv_head. injection H as [= H].
+        symmetry in H. apply (F_up_l _ _ H). }
+      clear Heql1 Heql2.
+      decomp_list_eq eq2; subst; list_simpl in *.
+      + clear H.
+        apply app_inv_head in eqΔ_CD'.
+        injection eqΔ_CD' as [= H]. symmetry in H.
+        apply (F_up_l _ _ H).
+      + injection eq1 as [= ->].
+        apply app_inv_head in eqΔ_CD'. injection eqΔ_CD' as [= ->].
+        contradiction H. reflexivity.
+      + clear H.
+        apply app_inv_head in eqΔ_CD'.
+        injection eqΔ_CD' as [= H].
+        apply (F_up_l _ _ H).
+    - reflexivity.
+    - exfalso.
+      clear eqΔ_AB'0.
+      rewrite app_comm_cons, app_assoc in eqΔ_CD'.
+      remember (lCD ++ F C D :: l) as l1. clear Heql1.
+      rewrite 2 app_comm_cons, app_assoc in eq2.
+      remember (lAB' ++ A :: B :: l0) as l2. clear Heql2.
+      decomp_list_eq eq2; subst; list_simpl in *.
+      + destruct l3; list_simpl in *.
+        * injection eq1 as [= -> ->].
+          apply (f_equal (@rev _)) in eqΔ_CD'. list_simpl in eqΔ_CD'.
+          apply app_inv_head in eqΔ_CD'.
+          injection eqΔ_CD' as [= H]. symmetry in H.
+          apply (F_up_r2 _ _ _ H).
+        * injection eq1 as [= -> ->].
+          apply (f_equal (@rev _)) in eqΔ_CD'. list_simpl in eqΔ_CD'.
+          apply app_inv_head in eqΔ_CD'.
+          injection eqΔ_CD' as [= H]. symmetry in H.
+          apply (F_up_r _ _ H).
+      + apply (f_equal (@rev _)) in eqΔ_CD'. list_simpl in eqΔ_CD'.
+        apply app_inv_head in eqΔ_CD'.
+        injection eqΔ_CD' as [= H]. symmetry in H.
+        apply (F_up_r _ _ H).
+      + apply (f_equal (@rev _)) in eqΔ_CD'. list_simpl in eqΔ_CD'.
+        apply app_inv_head in eqΔ_CD'.
+        injection eqΔ_CD' as [= H]. symmetry in H.
+        apply (F_up_r _ _ H). }
+  subst.
+  rewrite 2 app_comm_cons in eqΔ_AB'. rewrite app_assoc in eqΔ_AB'.
+  apply app_inv_tail in eqΔ_AB'.
+  subst. list_simpl in *.
+  remember (l ++ A :: B :: rAB') as l0. clear Heql0.
+  decomp_list_eq eqΔ_CD'; subst; list_simpl in *.
+  + apply app_inv_head in eq2.
+    injection eq2 as [= HN _].
+    exfalso. apply (F_up_l _ _ HN).
+  + easy.
+  + apply app_inv_head in eq2.
+    injection eq2 as [= HN _]. symmetry in HN.
+    exfalso. apply (F_up_l _ _ HN).
+*)
+Admitted.
 
 Inductive rule_equiv1 (A B C D : formula) : forall (Σ : seq formula), crelation (⊢_pr Σ) :=
 | rule_parr_equiv1 : 
@@ -446,9 +599,7 @@ Lemma rule_equiv_sym A B C D Σ (π1 π2 : ⊢_pr Σ) :
 Proof.
 move=> H; dependent destruction H; subst.
 apply: rule_parr_equiv => //=.
-case: neq2 => [H | H].
-  right. exact: H.
-  left. exact: H.
+by symmetry.
 Qed.
 
 Lemma rule_equiv_sym1 A B C D Σ (π1 π2 : ⊢_pr Σ) :
@@ -467,7 +618,7 @@ Lemma commutation_rule A B C D (π : ⊢_pr [:: A; B; C; D]) :
   (prr_nondep C D [:: A ⅋ B] [::] erefl erefl (prr_nondep A B [::] [:: C; D] erefl erefl π)).
 Proof.
 apply: rule_parr_equiv.
-by right; split => //=. 
+intros [=]. (* ss_reflect style? *)
 Qed.
 
 Lemma commutation_rule1 A B C D (π : ⊢_pr [:: A; B; C; D]) :
@@ -484,82 +635,41 @@ Lemma test_invol_rule Σ A B C D (π1 : ⊢_pr Σ) (π2 : ⊢_pr Σ) (π3 : ⊢_
 Proof.
 move => H1 H2.
 dependent destruction H1; dependent destruction H2; subst.
-case : neq2 => [ [H ] [H1 H2] | H] => //=.
+have eq1s := eq1. symmetry in eq1s.
+case : (parr_middle_case _ _ _ _ _ _ _ _ _ _
+         eqAB erefl erefl erefl eqCD_in_AB eqAB_in_CD erefl eq1s neq2).
+- move => [H1 H2]. subst.
+  have eq0s := eq0. symmetry in eq0s.
+  case : (parr_middle_case _ _ _ _ _ _ _ _ _ _
+           eqAB0 erefl erefl erefl eqCD_in_AB0 eqAB_in_CD0 erefl eq0s neq0).
+    move => [H' H].
+(*
+  case : neq2 => [ [H ] [H1 H2] | H] => //=..
   case: neq0 => [[H'] [H1' H2'] | H'] => //=.
-    have HlAB : ΓlAB = ΓlAB0.
-      rewrite H' H.
-      congr(_++_).
-      move: eqAB eqAB0.
-      rewrite H H' -H2 -!catA /=.
-      move => E1 E2.
-      move: E1.
-      move=> /app_inv_head E1.
-      have := congr1 behead E1 => /= E1'.
-      move: E2.
-      move=> /app_inv_head E2.
-      have := congr1 behead E2 => /= E2'.
-      f_equal.
-      subst.
-      have := congr1 behead E2 => /= E2''.
-      move: E2''.
-      by move=> /app_inv_tail E2''.
-    subst.
-    have Hm : Γm = Γm0.
-      move : HlAB => /app_inv_head E1.
-      by have := congr1 behead E1 => /= E2''.
-    subst.
-    have HrCD' : ΓrCD' = ΓrCD'0.
-      rewrite eqCD_in_AB in eqCD_in_AB0.
-      move : eqCD_in_AB0=> /app_inv_head E2.
-      by have := congr1 behead E2 => /= E2''.
+*)
+    have H'' : (ΓrAB = ΓrAB0) by admit.
+    have H''' : (ΓlCD' = ΓlCD'0) by admit.
     subst.
     rewrite (eq_irrelevance eqCD_in_AB eqCD_in_AB0) (eq_irrelevance eq0 eq1).
     by rewrite (eq_irrelevance eqAB eqAB0).
-  case: H' => H'_lCD [H'_lAB' H'_rCD'].
-  have eq1_ := eq1.
-  rewrite H1 H'_lCD H'_lAB' -!catA  /= in eq1_.
-  move : eq1_ => /app_inv_head E1.
-  have E_A : A = A ⅋ B by injection E1.
-  exfalso.
-  induction A.
-    induction B.
-      discriminate.
-      discriminate.
-  have ff : forall F b X, F = bin b F X -> False.
-  clear; elim=> [b' a' | b' F1 IH1 F2 IH2] b X Eq; first by discriminate.
-  injection Eq => _ Eq_F1 _; exact: (IH1 _ _ Eq_F1). 
-  exact: (ff _ _ _ E_A).
-case: H => H'_lCD [H'_lAB' H'_rCD'].
-case: neq0 => [[H0_lAB0_CD [H0_lCD'0 H0_rAB']] | [H0_lCD_AB0 [H0_lAB' H0_rCD'0]]].
-  have eq0_ := eq0.
-  rewrite H'_lAB' H0_lCD'0 H'_lCD -!catA /= in eq0_.
-  apply (app_inv_head ΓlAB) in eq0_.
-  injection eq0_ => Eq _.
-  have ff : forall F b X, F = bin b F X -> False.
-    clear; elim=> [b' a' | b' F1 IH1 F2 IH2] b X Eq; first by discriminate.
-    by injection Eq => _ Eq_F1 _; exact: (IH1 _ _ Eq_F1). 
-  have E_A : A = A ⅋ B by injection eq0_.
-  exfalso.
-  exact: (ff _ _ _ E_A).
-have Eq_lAB : ΓlAB0 = ΓlAB by rewrite -H'_lAB' H0_lAB'.
+    clear eq1s eq0s.
+    exfalso. admit.
+- move => [H1 H2]. subst.
+  have eq0s := eq0. symmetry in eq0s.
+  case : (parr_middle_case _ _ _ _ _ _ _ _ _ _
+           eqAB0 erefl erefl erefl eqCD_in_AB0 eqAB_in_CD0 erefl eq0s neq0).
+    move => [H' H]. subst.
+    exfalso. admit.
+move => [H' H]. subst.
+have Eq_lAB : ΓlAB0 = ΓlAB by admit.
 subst ΓlAB0.
-have Eq_rCD' : ΓrCD'0 = ΓrCD' by rewrite H0_rCD'0 -H'_rCD'.
+have Eq_rCD' : ΓrCD'0 = ΓrCD' by admit.
 subst ΓrCD'.
-subst ΓlAB ΓrCD.
-have Eq_rAB : ΓrAB = ΓrAB0.
-  move: eqAB eqAB0 => -> E.
-  move : E => /app_inv_head E.
-  by have := congr1 behead E.
-subst ΓrAB0.
-have Eq_lCD' : ΓlCD' = ΓlCD'0.
-  move: eqCD_in_AB eqCD_in_AB0 => -> E.
-  by exact: (app_inv_tail _ _ _ E).
-subst ΓlCD'0.
 rewrite (eq_irrelevance eqCD_in_AB eqCD_in_AB0) (eq_irrelevance eq0 eq1).
 by rewrite (eq_irrelevance eqAB eqAB0).
-Qed.
+Admitted.
 
-Lemma rule_equiv_cong : forall Σ Σ' A B C D Γl Γr
+Lemma rule_equiv1_cong : forall Σ Σ' A B C D Γl Γr
   (eq_S : Σ = Γl ++ A ⅋ B :: Γr)
   (eq_S' : Σ' = Γl ++ [:: A, B & Γr])
   (π1 π2 : ⊢_pr Σ'),
